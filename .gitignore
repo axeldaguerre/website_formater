@@ -1,0 +1,13 @@
+*.rdbg
+.vscode
+
+*.map
+*.obj
+*.exe
+*.map
+*.pdb
+*.txt
+
+src/engine.code-workspace
+build/pt
+build/vc140.pdb
