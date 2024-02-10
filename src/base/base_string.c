@@ -31,7 +31,7 @@ push_str8_cat(Arena *arena, String8 string, String8 cat)
 internal String8
 push_str8_copy(Arena *arena, String8 s)
 {
-  String8 result = {};
+  String8 result = {0};
   result.size = s.size;
   result.str = push_array_no_zero(arena, U8, result.size);
   MemoryCopy(result.str, s.str, s.size);
@@ -53,12 +53,21 @@ upper_from_str8(Arena *arena, String8 string)
 }
 
 internal B32
-str8_match(String8 a, String8 b, StringMatchFlags flags = StringMatchFlag_CaseInsensitive)
+str8_contains(String8 string, String8 pattern, StringMatchFlags flags)
 {
-  B32 result = false;
+  //TODO: URGENT
+  B32 result = 1;
+  return result;  
+}
+
+internal B32
+str8_match(String8 a, String8 b, StringMatchFlags flags)
+{
+  flags |= !flags ? StringMatchFlag_CaseInsensitive : flags;
+  B32 result = 0;
   if(a.size == b.size)
   {
-    result = true;
+    result = 1;
     B32 case_insensitive = (flags & StringMatchFlag_CaseInsensitive);
     U64 size = Min(a.size, b.size);
     for(U64 i = 0; i < size; ++i)
@@ -69,7 +78,7 @@ str8_match(String8 a, String8 b, StringMatchFlags flags = StringMatchFlag_CaseIn
       {} // TODO(Axel)
       if(at != bt)
       {
-        result = false;
+        result = 0;
         break;
       }      
     }
@@ -104,7 +113,7 @@ str8(U8 *str, U64 size)
 internal UnicodeDecode
 utf16_decode(U16 *str, U64 remain)
 {
-  UnicodeDecode result = {};
+  UnicodeDecode result = {0};
   result.codepoint = str[0];
   result.inc = 1;   
   if(remain > 1 && 0xD8000 <= str[0] && str[0] <= 0xDBFF && 0xDC00 <= str[1] && str[1] <= 0xDFFF)
@@ -172,7 +181,7 @@ utf16_encode(U16 *str, U32 codepoint)
   }
   else
   {
-    AssertAlways(true);
+    AssertAlways(1);
   }
 
   return inc;
@@ -180,33 +189,32 @@ utf16_encode(U16 *str, U32 codepoint)
 
 internal U32
 utf8_encode(U8 *str, U32 codepoint)
-{    
-  // TODO(Axel): test all planes
-    U32 inc = 0;    
+{
+    U32 inc = 0;
     if(codepoint < 0x0080)
     {
       str[0] = (U8)codepoint;
       inc = 1;
     } 
-    else if(codepoint <= 0x07FF) 
+    else if(codepoint <= 0x07FF)
     {
-      str[0] = 0b11010000 | (codepoint >> 6) & bitmask5;
-      str[1] = 0b10000000 | codepoint        & bitmask6;
+      str[0] = (U8)((0b11000000) | ((codepoint >> 6) & bitmask5));
+      str[1] = (U8)((0b10000000) | (codepoint        & bitmask6));
       inc = 2;
     } 
     else if(codepoint <= 0xFFFF)
     {
-      str[0] = 0b11100000 | (codepoint >> 12) & bitmask4;
-      str[1] = 0b10000000 | (codepoint >> 6 ) & bitmask6;
-      str[2] = 0b10000000 |  codepoint        & bitmask6;
+      str[0] = (U8)((0b11100000) | ((codepoint >> 12) & bitmask4));
+      str[1] = (U8)((0b10000000) | ((codepoint >> 6 ) & bitmask6));
+      str[2] = (U8)((0b10000000) |  (codepoint        & bitmask6));
       inc = 3;
     } 
     else if(codepoint < 0x1000FF)
     {
-      str[0] = 0b11110000 | (codepoint >> 18) & bitmask3;
-      str[1] = 0b11000000 | (codepoint >> 12) & bitmask6;
-      str[2] = 0b10000000 | (codepoint >> 8 ) & bitmask6;
-      str[3] = 0b10000000 |  codepoint        & bitmask6;
+      str[0] = (U8)((0b11110000) | ((codepoint >> 18) & bitmask3));
+      str[1] = (U8)((0b11000000) | ((codepoint >> 12) & bitmask6));
+      str[2] = (U8)((0b10000000) | ((codepoint >> 8 ) & bitmask6));
+      str[3] = (U8)((0b10000000) |  (codepoint        & bitmask6));
       inc = 4;
     }
     else 
@@ -221,7 +229,7 @@ utf8_encode(U8 *str, U32 codepoint)
 internal UnicodeDecode
 utf8_decode(U8 *str, U64 remain)
 { 
-  UnicodeDecode result = {};
+  UnicodeDecode result = {0};
   // TODO(Axel): perf wise, it may be bad for high planes => look up table ?
   if(str[0] <= 0xC0)
   {
@@ -254,16 +262,30 @@ utf8_decode(U8 *str, U64 remain)
 }
 
 internal String8
+str8_join(Arena *arena, String8 a, String8 b)
+{
+  String8 string;
+  U64 size = a.size + b.size;
+  string.str = push_array_no_zero(arena, U8, size + 1);
+  MemoryCopy(string.str, a.str, a.size);
+  MemoryCopy(string.str + a.size, b.str, b.size);
+  string.str[size] = 0;
+  string.size = size;
+  return string;
+}
+
+internal String8
 str8_chop_last_slash(String8 string)
 {  
   U8 *ptr = string.str + string.size;
   for(;ptr > string.str; --ptr) {
     if(*ptr == '/' || *ptr == '\\') {
+      ptr += 1;
       break;
     }
   }
   if(ptr >= string.str) {
-    string.size =  ptr - string.str + 1;
+    string.size =  ptr - string.str;
   }
   else {
     string.size = 0;
@@ -285,7 +307,7 @@ internal B32
 str8_ends_with(String8 str, String8 match)
 {
   String8 end = str8_post_fix(str, match.size);
-  B32 is_match = str8_match(end, match);
+  B32 is_match = str8_match(end, match, StringMatchFlag_CaseInsensitive);
 
   return is_match;
 }

@@ -6,6 +6,7 @@
 #define ClampTop(A, B) Min(A,B)
 #define ClampBottom(A, B) Max(A,B)
 
+typedef union Rng1U64 Rng1U64;
 union Rng1U64
 {
   struct
@@ -16,8 +17,6 @@ union Rng1U64
   U64 v[2];
 };
 
-
-
-internal Rng1U64 rng_1u64(U64 min, U64 max) {Rng1U64 r = {min, max}; if(r.max < r.min) { Swap(U64, r.min, r.max); } return r;};
+internal Rng1U64 rng_1u64(U64 min, U64 max);
  
 #endif

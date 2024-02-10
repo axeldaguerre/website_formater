@@ -73,9 +73,9 @@ os_file_infos_join_list(Arena *arena, OS_FileInfoList *a, OS_FileInfoList *b)
 }
 
 internal void
-os_push_files_infos_from_folder(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list)
+os_push_files_infos(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list)
 { 
-  String8 path_wildcard = push_str8_cat(arena, path, str8_lit("/*"));
+  String8 path_wildcard = push_str8_cat(arena, path, str8_lit("\\*"));
   String16 path_16 = str16_from_str8(arena, path_wildcard);
   OS_FileIter *file_iter = os_file_iter_begin(arena, path_16, OS_FileIterFlag_None);
   if(file_iter) 
@@ -87,8 +87,8 @@ os_push_files_infos_from_folder(Arena *arena, String8 path, OS_FileIterFlags fla
       if(info->props.flags & FilePropertyFlag_IsFolder)
       {
         String8 path_folder = push_str8_cat(arena, path, str8_lit("/"));
-        String8 path_folder_wildcard = push_str8_cat(arena, path_folder, info->name);
-        os_push_files_infos_from_folder(arena, path_folder_wildcard, flags, list);
+        String8 path_folder_wildcard = push_str8_cat(arena, path_folder, info->filename);
+        os_push_files_infos(arena, path_folder_wildcard, flags, list);
       }
       else
       {
@@ -96,8 +96,6 @@ os_push_files_infos_from_folder(Arena *arena, String8 path, OS_FileIterFlags fla
       }
         
     } while(!(file_iter->flags & OS_FileIterFlag_Done));
-    os_file_iter_end(file_iter);
-    
+    os_file_iter_end(file_iter);    
   }
 }
-

@@ -26,7 +26,7 @@ typedef struct OS_HandleArray OS_HandleArray;
 struct OS_HandleArray
 {
   OS_Handle *handles;
-  U64       count;  
+  U64       count;
 };
 
 typedef U32 OS_FileIterFlags;
@@ -44,7 +44,8 @@ typedef struct OS_FileIter OS_FileIter;
 struct OS_FileIter 
 { 
   OS_FileIterFlags flags;
-  U8 memory[600];
+  String8          path;
+  U8               memory[600];
 };
 
 typedef U32 FilePropertiesFlags;
@@ -52,19 +53,20 @@ enum
 {
    FilePropertyFlag_Unknown = (1 << 0),
    FilePropertyFlag_IsFolder = (1 << 1),
-}; 
+} os_handle_array_from_info_list;
 
 typedef struct FileProperties FileProperties;
 struct FileProperties
 {
-  U64 size;
+  U64                 size;
   FilePropertiesFlags flags;
 };
 
 typedef struct OS_FileInfo OS_FileInfo;
 struct OS_FileInfo
 {  
-  String8 name;
+  String8        filename; // path
+  String8        name;
   FileProperties props;
 };
 
@@ -72,7 +74,7 @@ typedef struct OS_FileInfoNode OS_FileInfoNode;
 struct OS_FileInfoNode
 {
   OS_FileInfoNode *next;
-  OS_FileInfo     info;
+  OS_FileInfo      info;
 };
 
 typedef struct OS_FileInfoList OS_FileInfoList;
@@ -80,18 +82,19 @@ struct OS_FileInfoList
 {
   OS_FileInfoNode *first;
   OS_FileInfoNode *last;
-  U64             count;
+  U64              count;
 };
 
 typedef struct OS_FileInfoArray OS_FileInfoArray;
 struct OS_FileInfoArray
 {
   OS_FileInfo *infos;
-  U64         count;  
+  U64          count;  
 };
 
-internal OS_FileIter * os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags);
-internal B32           os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out);
-internal void          os_file_iter_end(OS_FileIter *iter);
-internal void          os_push_files_infos_from_folder(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list);
+internal OS_FileIter *    os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags);
+internal B32              os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out);
+internal void             os_file_iter_end(OS_FileIter *iter);
+internal void             os_push_files_infos(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list);
+
 #endif

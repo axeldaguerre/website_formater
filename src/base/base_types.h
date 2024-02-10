@@ -47,5 +47,7 @@ global const U32 bitmask10 = 0x0000003FF;
 
 internal U32 u32_from_u64(U64 x);
 internal U64 u64_from_high_low_u32(U32 high, U32 low);
+
 # define read_only __declspec(allocate(".rdata$"))
+
 #endif

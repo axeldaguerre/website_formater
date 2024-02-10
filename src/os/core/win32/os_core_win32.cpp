@@ -37,10 +37,14 @@ os_release(void *ptr, U64 size)
 
 // ================ File ==================
 internal OS_Handle
-os_file_open(String8 path)
+os_file_open(Arena *arena, String8 path)
 {
     OS_Handle result = {0};
-    HANDLE file = CreateFileW((WCHAR *)path.str, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    Temp scratch = temp_begin(arena);
+    
+    String16 path16 = str16_from_str8(scratch.arena, path);
+    HANDLE file = CreateFileW((WCHAR *)path16.str, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    temp_end(scratch);
     if(file != INVALID_HANDLE_VALUE)
     {
         result.u64[0] = (U64)file;
@@ -76,7 +80,7 @@ os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
     HANDLE win32_handle = (HANDLE)file.u64[0];
     U64 file_size;
     GetFileSizeEx(win32_handle, (LARGE_INTEGER *)&file_size);
-    Rng1U64 rng_clamped = rng_1u64( ClampTop(rng.min, file_size), ClampTop(rng.max, file_size) ); 
+    Rng1U64 rng_clamped = rng_1u64( ClampTop(rng.min, file_size), ClampTop(rng.max, file_size) );
     U64 to_read = (rng_clamped.max - rng_clamped.min);
     U64 total_read_size = 0;
     for(;total_read_size < to_read;)
@@ -99,56 +103,63 @@ os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags)
 {    
     OS_FileIter *iter = push_array(arena, OS_FileIter, 1);
     iter->flags = flags;
+    String8 root_path = str8_from_16(arena, path);
+    if(str8_contains(root_path, str8_lit("/*"), StringMatchFlag_CaseInsensitive))
+    {
+      root_path = str8_chop_last_slash(root_path);
+    }
+    iter->path = root_path;
     W32_FileIter *win32_iter = (W32_FileIter*)iter->memory;
-    win32_iter->hnd = FindFirstFileW((WCHAR*)path.str, &win32_iter->find_data);
+    win32_iter->handle = FindFirstFileW((WCHAR*)path.str, &win32_iter->find_data);
     return iter;
 }
 
 internal B32
 os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info)
 {
-    B32 result = false;
-    *out_info = {0};
-    W32_FileIter *win32_file_iter = (W32_FileIter*)iter->memory;
+    B32 result = 0;
+    W32_FileIter *win32_file_iter = (W32_FileIter*)iter->memory; 
     if(!(iter->flags & OS_FileIterFlag_Done)) 
     {      
       do {
-          B32 is_valid = true;
+          B32 is_valid = 1;
           FilePropertiesFlags flags_properties = FilePropertyFlag_Unknown;
           DWORD attributes =  win32_file_iter->find_data.dwFileAttributes;
           WCHAR *name = win32_file_iter->find_data.cFileName;
+          HANDLE handle = win32_file_iter->handle;
           if(!(iter->flags & OS_FileIterFlag_Done) && name[0] == '.') 
           {
-              is_valid = false;
+              is_valid = 0;
           }
           if(attributes & FILE_ATTRIBUTE_DIRECTORY)
           {
             flags_properties |= FilePropertyFlag_IsFolder;
             if(iter->flags & OS_FileIterFlag_SkipFolders)
             {
-                is_valid = false;
+                is_valid = 0;
             }
           }
           else 
           {
               if(iter->flags & OS_FileIterFlag_SkipFiles) 
               {
-                is_valid = false;
+                is_valid = 0;
               }        
           }
           if(is_valid) 
           {
-            result = true;
-            out_info->name = str8_from_16(arena, str16((U16*)name, cstr16_length((U16*)name)));
-            out_info->props.size = u64_from_high_low_u32(win32_file_iter->find_data.nFileSizeLow, win32_file_iter->find_data.nFileSizeHigh);
-            out_info->props.flags = flags_properties;            
-            if(!FindNextFileW(win32_file_iter->hnd, &win32_file_iter->find_data)) 
+            result = 1;            
+            out_info->name        = str8_from_16(arena, str16((U16*)name, cstr16_length((U16*)name)));
+            out_info->filename    = str8_join(arena, iter->path, out_info->name);
+            out_info->props.size  = u64_from_high_low_u32(win32_file_iter->find_data.nFileSizeLow, win32_file_iter->find_data.nFileSizeHigh);
+            out_info->props.flags = flags_properties;
+            if(!FindNextFileW(win32_file_iter->handle, &win32_file_iter->find_data)) 
             {
                 iter->flags |= OS_FileIterFlag_Done;
             }            
             break;
           }
-      } while(FindNextFileW(win32_file_iter->hnd, &win32_file_iter->find_data));
+      } while(FindNextFileW(win32_file_iter->handle, &win32_file_iter->find_data));
     }
     if(!result)
     {
@@ -161,6 +172,6 @@ internal void
 os_file_iter_end(OS_FileIter *iter)
 {
   W32_FileIter *w32_iter = (W32_FileIter*)iter->memory;
-  FindClose(w32_iter->hnd);
+  FindClose(w32_iter->handle);
 }
 

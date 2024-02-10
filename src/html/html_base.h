@@ -39,5 +39,6 @@ struct HtmlTokenList
 };
 
 internal HtmlTokenNode* html_token_push_list(Arena *arena, HtmlTokenList *list, HtmlToken token);
+internal void html_parse(Arena *arena, OS_FileInfoList *list);
 
 #endif

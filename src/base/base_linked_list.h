@@ -14,4 +14,6 @@
 #define SLLStackPush_N(f,n,field) ((n)->field=(f), (f)=(n))
 #define SLLStackPop_N(f,field) ((f)=(f)->field)
 
+#define SLLConvert(f,n,field) ((n)->field=(f), (f)=(n))
+
 #endif
