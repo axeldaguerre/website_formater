@@ -12,7 +12,7 @@ os_reserve(U64 size)
 internal B32
 os_commit(void *ptr, U64 size)
 {   
-  B32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
+  B32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);  
   return result;
 }
 
@@ -40,8 +40,7 @@ internal OS_Handle
 os_file_open(Arena *arena, String8 path)
 {
     OS_Handle result = {0};
-    Temp scratch = temp_begin(arena);
-    
+    Temp scratch = temp_begin(arena);    
     String16 path16 = str16_from_str8(scratch.arena, path);
     HANDLE file = CreateFileW((WCHAR *)path16.str, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     temp_end(scratch);
@@ -57,7 +56,7 @@ os_file_write(OS_Handle file, Rng1U64 rng, void *data)
 {   
     if(os_handle_match(file, os_handle_zero())) return;
 
-    HANDLE win32_handle = (HANDLE)file.u64[0];
+    HANDLE w32_handle = (HANDLE)file.u64[0];
     U64 to_write_size = (rng.max - rng.min);
     U64 total_write_size = 0;
     for(;total_write_size < to_write_size;)
@@ -67,7 +66,7 @@ os_file_write(OS_Handle file, Rng1U64 rng, void *data)
         U64 amount_64 = (to_write_size - total_write_size);
         // TODO(Axel): Test the maximum write size
         U32 amount_32 = u32_from_u64(amount_64);
-        BOOL success  = WriteFile(win32_handle, memory, (DWORD)amount_32,  (DWORD*)&write_size, 0);
+        BOOL success  = WriteFile(w32_handle, memory, (DWORD)amount_32,  (DWORD*)&write_size, 0);
         if(success == 0) break;
         total_write_size += write_size;
     }
@@ -77,9 +76,9 @@ internal U64
 os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
 {
     if(os_handle_match(file, os_handle_zero())) { return 0; };
-    HANDLE win32_handle = (HANDLE)file.u64[0];
+    HANDLE w32_handle = (HANDLE)file.u64[0];
     U64 file_size;
-    GetFileSizeEx(win32_handle, (LARGE_INTEGER *)&file_size);
+    GetFileSizeEx(w32_handle, (LARGE_INTEGER *)&file_size);
     Rng1U64 rng_clamped = rng_1u64( ClampTop(rng.min, file_size), ClampTop(rng.max, file_size) );
     U64 to_read = (rng_clamped.max - rng_clamped.min);
     U64 total_read_size = 0;
@@ -90,7 +89,7 @@ os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
         U32 amount_32 = u32_from_u64(amount_64);
         // TODO(Axel): implement asyncronous (overlapped)
         DWORD bytes_read = 0;
-        BOOL SUCCESS = ReadFile(win32_handle, (U8*)(out_data) + total_read_size, (DWORD)amount_32, &bytes_read, 0);
+        BOOL SUCCESS = ReadFile(w32_handle, (U8*)(out_data) + total_read_size, (DWORD)amount_32, &bytes_read, 0);
         if(SUCCESS ==0) break;
         total_read_size += bytes_read;
     }
@@ -99,18 +98,16 @@ os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
 }
 
 internal OS_FileIter *
-os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags)
-{    
+os_file_iter_begin(Arena *arena, String8 query, OS_FileIterFlags flags)
+{
     OS_FileIter *iter = push_array(arena, OS_FileIter, 1);
     iter->flags = flags;
-    String8 root_path = str8_from_16(arena, path);
-    if(str8_contains(root_path, str8_lit("/*"), StringMatchFlag_CaseInsensitive))
-    {
-      root_path = str8_chop_last_slash(root_path);
-    }
-    iter->path = root_path;
-    W32_FileIter *win32_iter = (W32_FileIter*)iter->memory;
-    win32_iter->handle = FindFirstFileW((WCHAR*)path.str, &win32_iter->find_data);
+    iter->query = query;
+    W32_FileIter *w32_iter = (W32_FileIter *)iter->memory;
+    Temp scratch = temp_begin(arena);
+    String16 path_16 = str16_from_str8(scratch.arena, query);
+    w32_iter->handle = FindFirstFileW((WCHAR *) path_16.str, &w32_iter->find_data);
+    temp_end(scratch);
     return iter;
 }
 
@@ -118,51 +115,58 @@ internal B32
 os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info)
 {
     B32 result = 0;
-    W32_FileIter *win32_file_iter = (W32_FileIter*)iter->memory; 
-    if(!(iter->flags & OS_FileIterFlag_Done)) 
+    W32_FileIter *w32_iter = (W32_FileIter*)iter->memory;
+    String8List iter_path_split = str8_split(arena, iter->query, str8_lit("*"), StringSplitFlag_None); 
+    
+    if(!(iter->flags & OS_FileIterFlag_Done) && w32_iter->handle != INVALID_HANDLE_VALUE) 
     {      
       do {
-          B32 is_valid = 1;
+          B32 usable_file = 1;
           FilePropertiesFlags flags_properties = FilePropertyFlag_Unknown;
-          DWORD attributes =  win32_file_iter->find_data.dwFileAttributes;
-          WCHAR *name = win32_file_iter->find_data.cFileName;
-          HANDLE handle = win32_file_iter->handle;
-          if(!(iter->flags & OS_FileIterFlag_Done) && name[0] == '.') 
-          {
-              is_valid = 0;
-          }
-          if(attributes & FILE_ATTRIBUTE_DIRECTORY)
-          {
-            flags_properties |= FilePropertyFlag_IsFolder;
-            if(iter->flags & OS_FileIterFlag_SkipFolders)
-            {
-                is_valid = 0;
+          DWORD attributes =  w32_iter->find_data.dwFileAttributes;
+          WCHAR *file_name = w32_iter->find_data.cFileName;
+          if (file_name[0] == '.'){
+            if (iter->flags & OS_FileIterFlag_SkipHiddenFiles){
+            usable_file = 0;
             }
           }
-          else 
-          {
-              if(iter->flags & OS_FileIterFlag_SkipFiles) 
-              {
-                is_valid = 0;
-              }        
+          else if (file_name[1] == 0 || file_name[0] == 0){
+            usable_file = 0;
           }
-          if(is_valid) 
-          {
+          else if (file_name[1] == '.' && file_name[2] == 0){
+            usable_file = 0;
+          }
+          if(attributes & FILE_ATTRIBUTE_DIRECTORY){
+            flags_properties |= FilePropertyFlag_IsFolder;
+            if(iter->flags & OS_FileIterFlag_SkipFolders){
+                usable_file = 0;
+            }
+          }
+          else {
+            if(iter->flags & OS_FileIterFlag_SkipFiles){
+              usable_file = 0;
+            }        
+          }
+          
+          if(usable_file){
             result = 1;            
-            out_info->name        = str8_from_16(arena, str16((U16*)name, cstr16_length((U16*)name)));
-            out_info->filename    = str8_join(arena, iter->path, out_info->name);
-            out_info->props.size  = u64_from_high_low_u32(win32_file_iter->find_data.nFileSizeLow, win32_file_iter->find_data.nFileSizeHigh);
-            out_info->props.flags = flags_properties;
-            if(!FindNextFileW(win32_file_iter->handle, &win32_file_iter->find_data)) 
-            {
+            
+            out_info->name              = str8_from_16(arena, str16_cstring((U16*)file_name));
+            out_info->filename          = push_str8_cat(arena, iter_path_split.first->string, out_info->name);
+            out_info->props.size        = u64_from_high_low_u32(w32_iter->find_data.nFileSizeHigh, w32_iter->find_data.nFileSizeLow);
+            out_info->props.extension   = str8_cut_from_last_dot(out_info->filename);
+            out_info->props.flags       = flags_properties;
+            
+            if(!FindNextFileW(w32_iter->handle, &w32_iter->find_data)){
                 iter->flags |= OS_FileIterFlag_Done;
-            }            
+            }
             break;
           }
-      } while(FindNextFileW(win32_file_iter->handle, &win32_file_iter->find_data));
+          
+      } while(FindNextFileW(w32_iter->handle, &w32_iter->find_data));
     }
-    if(!result)
-    {
+    
+    if(!result){
       iter->flags |= OS_FileIterFlag_Done;
     }
     return result;

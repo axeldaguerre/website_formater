@@ -15,11 +15,12 @@ html_parse(Arena *arena, OS_FileInfoList *list)
       node = node->next
   )
   {
+    U64 size_file = node->info.props.size;
     OS_Handle handle = os_file_open(arena, node->info.filename);
     if(os_handle_match(handle, os_handle_zero())) continue;
     Temp scratch = temp_begin(arena);
-    U8 *memory = push_array_no_zero(scratch.arena, U8, 2000);
-    U64 size = os_file_read(handle, rng_1u64(0, 2000), memory);
+    U8 *memory = push_array_no_zero(scratch.arena, U8, size_file);
+    U64 size = os_file_read(handle, rng_1u64(0, size_file), memory);
     temp_end(scratch);
   }
 }

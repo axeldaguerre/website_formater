@@ -35,7 +35,7 @@ global const U32 bitmask5  = 0x0000001F;
 global const U32 bitmask6  = 0x0000003F;
 global const U32 bitmask10 = 0x0000003FF;
 
-#define MemoryCopy(dest, src, size) memmove(dest, src, size)
+#define MemoryCopy(dst, src, size)    memmove((dst), (src), (size))
 #define MemoryZero(s,z) memset((s),0,(z))
 
 #define MAX_PATH_SIZE 260

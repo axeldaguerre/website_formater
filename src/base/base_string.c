@@ -16,18 +16,6 @@ char_to_upper(U8 c)
   return c;
 }
 
-internal String8 
-push_str8_cat(Arena *arena, String8 string, String8 cat)
-{
-  String8 result;
-  result.size = (string.size + cat.size);
-  result.str = push_array_no_zero(arena, U8, (result.size + 1));
-  MemoryCopy(result.str, string.str, string.size);
-  MemoryCopy((result.str + string.size), cat.str, cat.size);
-  result.str[result.size] = 0;
-  return result;
-}
-
 internal String8
 push_str8_copy(Arena *arena, String8 s)
 {
@@ -52,12 +40,29 @@ upper_from_str8(Arena *arena, String8 string)
   return result;
 }
 
-internal B32
-str8_contains(String8 string, String8 pattern, StringMatchFlags flags)
+internal U64
+str8_find(String8 string, String8 match, StringMatchFlags flags)
 {
-  //TODO: URGENT
-  B32 result = 1;
-  return result;  
+  U8 *ptr = string.str;
+  U8 *end = string.str + string.size;
+  
+  for(;ptr <= end; ptr += 1){
+    B32 is_match = 1;
+    for(U64 i = 0; i < match.size; ++i){
+      if(*(ptr + i) != match.str[i]){
+        is_match = 0;
+        break;
+      }
+    }
+    if(is_match){
+        break;
+    }
+  }
+  U64 result = string.size;
+  if(ptr != end){
+    result = (U64)(ptr - string.str);
+  }
+  return result;
 }
 
 internal B32
@@ -143,9 +148,7 @@ str8_from_16(Arena *arena, String16 utf16)
   }  
   str[size] = 0;
   arena_put_back(arena, (cap - size));
-  String8 result = str8(str, size);
-
-  return result;
+  return(str8(str, size));
 }
 
 internal String16
@@ -257,35 +260,51 @@ utf8_decode(U8 *str, U64 remain)
     result.codepoint |= (str[2] & 0b00111111) << 6;    
     result.codepoint |= (str[3] & 0b00111111);
   }  
-
   return result;   
 }
 
 internal String8
-str8_join(Arena *arena, String8 a, String8 b)
+push_str8_cat(Arena *arena, String8 s1, String8 s2)
 {
   String8 string;
-  U64 size = a.size + b.size;
-  string.str = push_array_no_zero(arena, U8, size + 1);
-  MemoryCopy(string.str, a.str, a.size);
-  MemoryCopy(string.str + a.size, b.str, b.size);
-  string.str[size] = 0;
-  string.size = size;
-  return string;
+  string.size = s1.size + s2.size;
+  string.str = push_array_no_zero(arena, U8, string.size + 1);
+  MemoryCopy(string.str, s1.str, s1.size);
+  MemoryCopy(string.str + s1.size, s2.str, s2.size);
+  string.str[string.size] = 0;
+  return(string);
+}
+
+internal String8
+str8_from_last_slash(String8 string)
+{    
+  if(string.size > 0){
+    U8 *ptr = string.str + string.size - 1;
+    for(;ptr > string.str; --ptr){
+      if(*ptr == '\\' || *ptr == '/'){
+        ++ptr;
+        break;
+      }
+    }
+    
+    string.size = (U64)(string.str + string.size - ptr);
+    string.str = ptr;
+  }
+  return string; 
 }
 
 internal String8
 str8_chop_last_slash(String8 string)
 {  
-  U8 *ptr = string.str + string.size;
+  U8 *ptr = string.str + string.size -1;
   for(;ptr > string.str; --ptr) {
     if(*ptr == '/' || *ptr == '\\') {
-      ptr += 1;
+      ++ptr;
       break;
     }
   }
   if(ptr >= string.str) {
-    string.size =  ptr - string.str;
+    string.size =  (U64)(ptr - string.str);
   }
   else {
     string.size = 0;
@@ -361,20 +380,99 @@ str8_array_from_list(Arena *arena, String8List *list)
 }
 
 internal String8
-str8_join_from_list(Arena *arena, String8List *list)
-{
-  String8 separator = str8_lit("/");
+str8_list_join(Arena *arena, String8List *list, String8 separator)
+{  
   String8 result;
   result.size = list->total_size;
-  result.str = push_array_no_zero(arena, U8, result.size);
+  result.str = push_array_no_zero(arena, U8, result.size + 1);
   U8 *ptr = result.str;
-  for(String8Node *n = list->first; n != 0; n = n->next)
+  for(String8Node *node = list->first;
+      node != 0;
+      node = node->next)
   {
-    MemoryCopy(ptr, n->string.str, n->string.size);
-    ptr += n->string.size;
+    MemoryCopy(ptr, node->string.str, node->string.size);
+    ptr += node->string.size;
     // TODO(Axel): use concat (avoid 2 memcopy if possible)
-    MemoryCopy(ptr, separator.str, separator.size);
-    ptr += separator.size;
+    if(node->next != 0){
+      MemoryCopy(ptr, separator.str, separator.size);
+      ptr += separator.size;
+    }
+  }
+  *ptr = 0;
+  return result;
+}
+
+internal String8
+str8_range(U8 *first, U8 *one_past_last)
+{
+  String8 result = {first, (U64)(one_past_last - first)};
+  return result;
+} 
+
+/*
+  Note: one char singularity only, you can't split with more than 
+        one character singularity
+*/
+internal void
+str8_split_push_list(Arena *arena, String8List *list, U8 *split_chars, U64 split_chars_count, 
+                    String8 string, StringSplitFlags flags)
+{
+  U8 *ptr = string.str;  
+  U8 *end = string.str + string.size;
+  
+  B32 keep_empties = (flags & StringSplitFlag_KeepEmpties);
+  
+  for(;ptr <= end;){
+    U8 *start = ptr;
+    for(;ptr <= end;ptr += 1){
+      B32 is_split = 0;
+      U8 c = *ptr;
+      for(U64 i = 0; i <= split_chars_count; ++i){
+        // TODO, if the full string of split chars, it may be stuck in the loop        
+        if(c == split_chars[i]){
+          is_split = 1;
+          break;
+        }
+      }
+      if(is_split == 1){
+          break;
+      }
+    }
+    String8 str = str8_range(start, ptr);    
+    
+    if(keep_empties || str.size > 0){
+      str8_push_list(arena, list, str);
+    }    
+    ++ptr;
+  } 
+}
+
+/*
+  NOTE: List.count == 1 when no split has occured
+*/
+internal String8List 
+str8_split(Arena *arena, String8 string, String8 split, StringSplitFlags flags)
+{
+  String8List list = {0}; 
+  str8_split_push_list(arena, &list, split.str, split.size, string, flags);
+  return list;
+}
+
+internal String8
+str8_cut_from_last_dot(String8 string)
+{
+  U8 *ptr = string.str + string.size;
+  String8 result = string;
+  result.str = string.str;
+  result.size = string.size;
+  for(;ptr > string.str; --ptr){
+    if(*ptr == '.'){
+      result.str = ptr + 1;
+      result.size = (U64)(ptr - string.str);
+     break; 
+    }
   }
   return result;
 }
+
+

@@ -73,29 +73,31 @@ os_file_infos_join_list(Arena *arena, OS_FileInfoList *a, OS_FileInfoList *b)
 }
 
 internal void
-os_push_files_infos(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list)
-{ 
-  String8 path_wildcard = push_str8_cat(arena, path, str8_lit("\\*"));
-  String16 path_16 = str16_from_str8(arena, path_wildcard);
-  OS_FileIter *file_iter = os_file_iter_begin(arena, path_16, OS_FileIterFlag_None);
-  if(file_iter) 
-  {   
-    do
-    {      
+os_push_files_infos(Arena *arena, String8 query, OS_FileIterFlags flags, OS_FileInfoList *list)
+{
+  OS_FileIter *iter = os_file_iter_begin(arena, query, flags);
+  
+  String8 wildcard_split = str8_lit("*");
+  String8List query_split_wildcard = str8_split(arena, query, wildcard_split, StringSplitFlag_None);
+  
+  if(iter) {
+    do {
       OS_FileInfo *info = push_array(arena, OS_FileInfo, 1);
-      os_file_iter_next(arena, file_iter, info);
-      if(info->props.flags & FilePropertyFlag_IsFolder)
-      {
-        String8 path_folder = push_str8_cat(arena, path, str8_lit("/"));
-        String8 path_folder_wildcard = push_str8_cat(arena, path_folder, info->filename);
-        os_push_files_infos(arena, path_folder_wildcard, flags, list);
+      
+      if(os_file_iter_next(arena, iter, info)){
+        if(info->props.flags & FilePropertyFlag_IsFolder){
+          if(query_split_wildcard.count > 1){
+            String8 folder_path = push_str8_cat(arena, query_split_wildcard.first->string, info->name);
+            
+            os_file_info_push_list(arena, list, info);
+            os_push_files_infos(arena, folder_path, flags, list);
+          }          
+        } else {
+          os_file_info_push_list(arena, list, info);
+        }
       }
-      else
-      {
-        os_file_info_push_list(arena, list, info);
-      }
-        
-    } while(!(file_iter->flags & OS_FileIterFlag_Done));
-    os_file_iter_end(file_iter);    
+    } while(!(iter->flags & OS_FileIterFlag_Done));
+    
+    os_file_iter_end(iter);
   }
 }

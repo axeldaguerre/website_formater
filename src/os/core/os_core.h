@@ -36,7 +36,7 @@ enum
   OS_FileIterFlag_SkipFolders    = (1 << 1),
   OS_FileIterFlag_SkipSubFolders = (1 << 2),
   OS_FileIterFlag_SkipFiles      = (1 << 3),
-  OS_FileIterFlag_Skip_Hidden    = (1 << 4),
+  OS_FileIterFlag_SkipHiddenFiles= (1 << 4),
   OS_FileIterFlag_Done           = (1 << 31)
 };
 
@@ -44,7 +44,7 @@ typedef struct OS_FileIter OS_FileIter;
 struct OS_FileIter 
 { 
   OS_FileIterFlags flags;
-  String8          path;
+  String8          query;
   U8               memory[600];
 };
 
@@ -59,6 +59,7 @@ typedef struct FileProperties FileProperties;
 struct FileProperties
 {
   U64                 size;
+  String8             extension;
   FilePropertiesFlags flags;
 };
 

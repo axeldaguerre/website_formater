@@ -69,8 +69,17 @@ enum
   StringMatchFlag_CaseInsensitive
 };
 
+typedef U32 StringSplitFlags;
+enum
+{
+  StringSplitFlag_None = (1 << 0),
+  StringSplitFlag_KeepEmpties = (1 << 1),
+};
+
+
 internal String16      str16(U16 *str, U64 size);
 internal U64           cstr16_length(U16 *str);
+internal String16      str16_cstring(U16 *str);
 internal String16      str16_from_str8(Arena *arena, String8 str);
 
 internal String8       str8(U8 *str, U64 size);
@@ -80,15 +89,18 @@ internal U32           utf8_encode(U8 *str, U32 codepoint);
 internal String8       push_str8_copy(Arena *arena, String8 string);
 internal String8       push_str8_cat(Arena *arena, String8 string, String8 cat);
 internal String8Node*  str8_push_list(Arena *arena, String8List *list, String8 str);
-internal String8       str8_join_from_list(Arena *arena, String8List *list);
+internal String8       str8_list_join(Arena *arena, String8List *list, String8 separator);
 internal B32           str8_ends_with(String8 str, String8 match);
 internal B32           str8_match(String8 a, String8 b, StringMatchFlags);
 internal String8       str8_post_fix(String8 str, U64 size);
 internal String8       str8_from_16(Arena *arena, String16 utf16);
 internal String8       str8_chop_last_slash(String8 str);
-internal B32           str8_contains(String8 string, String8 pattern, StringMatchFlags flags);
-internal String8       str8_join(Arena *arena, String8 a, String8 b);
-
-#define str8_lit(S) str8((U8*)(S), sizeof(S) - 1)
+internal U64           str8_find(String8 string, String8 match, StringMatchFlags flags);
+internal String8       push_str8_cat(Arena *arena, String8 a, String8 b);
+internal String8List   str8_split(Arena *arena, String8 string, String8 split, StringSplitFlags flags);
+internal void          str8_split_push_list(Arena *arena, String8List *list, U8 *split_chars, U64 split_chars_count, String8 string, StringSplitFlags flags);
+internal String8       str8_range(U8 *first, U8 *one_past_last);
+internal String8       str8_cut_from_last_dot(String8 string);
+#define str8_lit(S)    str8((U8*)(S), sizeof(S) - 1)
 
 #endif  

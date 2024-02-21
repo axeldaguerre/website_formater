@@ -33,5 +33,5 @@ internal Temp temp_begin(Arena *arena);
 #define temp_begin(arena) temp_begin(arena)
 #define temp_end(temp)    temp_end(temp)
 
-#define push_array_no_zero(a, T, c)(T*)(arena_push(a, sizeof(T)*c))
+#define push_array_no_zero(a, T, c)(T*)(arena_push((a), sizeof(T)*(c)))
 #define push_array(a,T,c) (T*)MemoryZero(push_array_no_zero(a,T,c), sizeof(T)*(c))
