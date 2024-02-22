@@ -1,44 +1,60 @@
 #ifndef PARSER_BASE_H
 #define PARSER_BASE_H
 
-typedef U32 HtmlTagType;
+typedef U32 HTMLTagType;
 enum
 {
-  HtmlTagType_Unknown,
+  HTMLTagType_Unknown,
 
-  HtmlTagType_h1,
-  HtmlTagType_h2,
-  HtmlTagType_h3,
-  HtmlTagType_h4,
-
-  HtmlTagType_Count
+  HTMLTagType_h1,
+  HTMLTagType_h2,
+  HTMLTagType_h3,
+  HTMLTagType_h4,
+    
+  HTMLTagType_Error,
+  
+  HTMLTagType_Count,
 };
 
-typedef struct HtmlToken HtmlToken;
-struct HtmlToken
+typedef struct HTMLToken HTMLToken;
+struct HTMLToken
 {
-  HtmlTagType tag;
+  HTMLTagType tag;
   String8     text;
   U64         byte_count;
 };
 
-typedef struct HtmlTokenNode HtmlTokenNode;
-struct HtmlTokenNode
+typedef struct HTMLParser HTMLParser;
+struct HTMLParser
 {
-  HtmlTokenNode   *next;
-  HtmlTagType tag;
+  U8 *memory;
+  U64 at;
+  B32 on_error;
+  U64 total_bytes;
 };
 
-typedef struct HtmlTokenList HtmlTokenList;
-struct HtmlTokenList
+typedef struct HTMLTokenNode HTMLTokenNode;
+struct HTMLTokenNode
 {
-  HtmlTokenNode *first;
-  HtmlTokenNode *last;
-  String8       filename;
+  HTMLTokenNode *next;
+  HTMLToken     token;
+};
+
+typedef struct HTMLTokenList HTMLTokenList;
+struct HTMLTokenList
+{
+  HTMLTokenNode *first;
+  HTMLTokenNode *last;
   U64           count;
 };
 
-internal HtmlTokenNode* html_token_push_list(Arena *arena, HtmlTokenList *list, HtmlToken token);
-internal void html_parse(Arena *arena, OS_FileInfoList *list);
+
+internal HTMLTokenNode* html_token_push_list(Arena *arena, HTMLTokenList *list, HTMLToken token);
+internal HTMLToken      html_get_token_next(Arena *arena, HTMLParser *parser, String8 *contents);
+
+internal B32            html_is_parsing(HTMLParser *parser);
+internal B32            html_is_in_bounds(HTMLParser *parser);
+
+internal void           html_parse(Arena *arena, OS_FileInfoList *list);
 
 #endif

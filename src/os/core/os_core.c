@@ -86,11 +86,12 @@ os_push_files_infos(Arena *arena, String8 query, OS_FileIterFlags flags, OS_File
       
       if(os_file_iter_next(arena, iter, info)){
         if(info->props.flags & FilePropertyFlag_IsFolder){
-          if(query_split_wildcard.count > 1){
+          if(query_split_wildcard.count == 1){
             String8 folder_path = push_str8_cat(arena, query_split_wildcard.first->string, info->name);
             
             os_file_info_push_list(arena, list, info);
-            os_push_files_infos(arena, folder_path, flags, list);
+            Temp scratch = temp_begin(arena);
+            os_push_files_infos(arena, push_str8_cat(scratch.arena, folder_path, str8_lit("\\*")), flags, list);
           }          
         } else {
           os_file_info_push_list(arena, list, info);

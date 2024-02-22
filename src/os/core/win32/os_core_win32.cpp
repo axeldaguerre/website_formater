@@ -97,7 +97,7 @@ os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
     return total_read_size;
 }
 
-internal OS_FileIter *
+internal OS_FileIter*
 os_file_iter_begin(Arena *arena, String8 query, OS_FileIterFlags flags)
 {
     OS_FileIter *iter = push_array(arena, OS_FileIter, 1);

@@ -358,9 +358,8 @@ str8_push_list(Arena *arena, String8List *list, String8 str)
   String8Node *node = push_array_no_zero(arena, String8Node, 1);
   SLLPush(list->first, list->last, node);
   list->total_size += str.size;
-  list->count += 1;
+  ++list->count;
   node->string = str;
-  
   return node;
 }
 
@@ -468,7 +467,7 @@ str8_cut_from_last_dot(String8 string)
   for(;ptr > string.str; --ptr){
     if(*ptr == '.'){
       result.str = ptr + 1;
-      result.size = (U64)(ptr - string.str);
+      result.size = (U64)(string.size - (result.str - string.str));
      break; 
     }
   }
