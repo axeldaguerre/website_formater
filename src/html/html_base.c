@@ -128,6 +128,7 @@ html_get_next_tag(Arena *arena, HTMLParser *parser)
         token = html_get_token(parser);
       } while(token.type != HTMLTokenType_angle_bracket_close);
     } break;
+    
     case HTMLTagClosingType_Self:
     {
       do {
@@ -135,6 +136,7 @@ html_get_next_tag(Arena *arena, HTMLParser *parser)
       } while(token.type != HTMLTokenType_angle_slash_then_bracket_close);
       result.range[1] = r1u64(parser->at-token.string.size, parser->at);
     } break;
+    
     case HTMLTagClosingType_Unique:
     {
       do {
@@ -184,6 +186,9 @@ html_parse_element(Arena *arena, HTMLParser *parser, HTMLTag open_tag)
     {
     } break;
   }
+  do {
+    ++parser->at;
+  } while(char_is_whitespace(parser->string.str[parser->at]));
   
   result->tag = tag;
   return result;
@@ -282,10 +287,12 @@ html_parse(Arena *arena, OS_FileInfoList *info_list)
       html_token_push(arena, token_list, *element);    
       if(parser.error.type == HTMLErrorType_unexpected_token)
       {
-        String8 error_msg = html_get_error_msg(arena, &parser, node->info.name);
+        String8 error_msg = html_get_error_msg(arena, &parser, file_name);
         str8_list_push(arena, error_messages, error_msg);
-        break;
+        // break;
       }
+      
+  
     }
     result = str8_list_join(arena, error_messages, str8_lit("\n"));
   } 
