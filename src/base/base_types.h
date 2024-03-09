@@ -48,6 +48,18 @@ global const U32 bitmask10 = 0x0000003FF;
 internal U32 u32_from_u64(U64 x);
 internal U64 u64_from_high_low_u32(U32 high, U32 low);
 
+#if COMPILER_CL || (COMPILER_CLANG && OS_WINDOWS)
+# pragma section(".rdata$", read)
 # define read_only __declspec(allocate(".rdata$"))
+#elif (COMPILER_CLANG && OS_LINUX)
+# define read_only __attribute__((section(".rodata")))
+#else
+// NOTE(rjf): I don't know of a useful way to do this in GCC land.
+// __attribute__((section(".rodata"))) looked promising, but it introduces a
+// strange warning about malformed section attributes, and it doesn't look
+// like writing to that section reliably produces access violations, strangely
+// enough. (It does on Clang)
+# define read_only
+#endif
 
 #endif

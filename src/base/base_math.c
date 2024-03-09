@@ -1,4 +1,1 @@
-internal Rng1U64 rng_1u64(U64 min, U64 max) {Rng1U64 r = {min, max}; if(r.max < r.min) { Swap(U64, r.min, r.max); } return r;}
-
-
-
+internal U64 dim_1u32(Rng1U64 r) {U64 c = r.max-r.min; return c;}

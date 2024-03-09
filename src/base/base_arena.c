@@ -49,38 +49,48 @@ arena_push(Arena *arena, U64 size)
   AssertAlways(current != 0);
   U64 pos_new = current->pos + size;
   
-  if(pos_new > arena->res){
-    B32 is_cmt_ok    = 0;
-    U64 cmt_new_size = 0;
+  if(pos_new > arena->res)
+  {
     /*
-      TODO(Axel): is memory space granurality useful here? 
+      TODO(Axel): is memory space alignment granurality useful here? 
       afaik win32 does it by itself.
     */    
     Arena *new_block = arena_allocate();
-    if(new_block) {
+    if(new_block) 
+    {
       new_block->base_pos = current->base_pos + current->res;
       SLLStackPush_N(arena->current, new_block, prev);
       current = new_block;
       pos_new = size;
-      
-      if(current->cmt < pos_new) {
-        cmt_new_size = current->cmt - pos_new;
-        U64 cmt_new_size_clamped = ClampTop(current->res, cmt_new_size);
-        is_cmt_ok = os_commit((U8*)current + current->cmt, cmt_new_size_clamped);
-        if(is_cmt_ok) {
-           current->cmt = cmt_new_size_clamped;
-        }
-        AssertAlways(current->cmt <= current->res);
-      }      
     }
-  }  
+  }
+  
+  if(current->cmt < pos_new) 
+  {
+    U64 cmt_new_size = pos_new - current->cmt;
+    U64 cmt_new_size_clamped = ClampTop(current->res, cmt_new_size);
+    B32 is_cmt_ok = os_commit((U8*)current + current->cmt, cmt_new_size_clamped);
+    if(is_cmt_ok)
+    {
+        current->cmt = cmt_new_size_clamped;
+    }
+    //DWORD Error = GetLastError();
+    AssertAlways(is_cmt_ok);
+    AssertAlways(current->cmt <= current->res);
+  }
   
   void *memory = 0;
-  AssertAlways(current->cmt >= pos_new);
+  if(current->cmt >= pos_new)
+  {
+    memory = (U8*)current + current->pos;
+    current->pos = pos_new;
+  }
   
-  memory = (U8*)current + current->pos;
-  current->pos = pos_new;
-
+  if(memory == 0)
+  { 
+    os_graphical_message(arena, 1, str8_lit("Fatal Allocation Failure"), str8_lit("Unexpected memory allocation failure."));
+    //os_exit_process(1);
+  }
   return memory;
 }
 
@@ -113,7 +123,7 @@ arena_clear(Arena *arena)
 {
   arena_pop_to(arena, 0);
 }
-
+// TODO: Temp is not working properly, data is overwritten when used in large size
 internal Temp
 temp_begin(Arena *arena)
 { 

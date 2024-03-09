@@ -12,7 +12,7 @@ os_reserve(U64 size)
 internal B32
 os_commit(void *ptr, U64 size)
 {   
-  B32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);  
+  B32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
   return result;
 }
 
@@ -37,17 +37,27 @@ os_release(void *ptr, U64 size)
 
 // ================ File ==================
 internal OS_Handle
-os_file_open(Arena *arena, String8 path)
+os_file_open(Arena *arena, String8 path, OS_AccessFlags flags)
 {
     OS_Handle result = {0};
-    Temp scratch = temp_begin(arena);    
+    Temp scratch = temp_begin(arena);
     String16 path16 = str16_from_str8(scratch.arena, path);
-    HANDLE file = CreateFileW((WCHAR *)path16.str, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    temp_end(scratch);
+    DWORD access_flags = 0;
+    DWORD share_mode = 0;
+    DWORD creation_disposition = OPEN_EXISTING;
+    if(flags & OS_AccessFlag_Read)    {access_flags |= GENERIC_READ;}
+    if(flags & OS_AccessFlag_Execute) {access_flags |= GENERIC_EXECUTE;}
+    if(flags & OS_AccessFlag_ShareRead)  {share_mode |= FILE_SHARE_READ;}
+    if(flags & OS_AccessFlag_ShareWrite) {share_mode |= FILE_SHARE_WRITE;}
+    if(flags & OS_AccessFlag_Write)   {creation_disposition = CREATE_ALWAYS;}
+
+    HANDLE file = CreateFileW((WCHAR *)path16.str, access_flags, FILE_SHARE_READ, 0, creation_disposition, 0, 0);
+    // DWORD Error = GetLastError();
     if(file != INVALID_HANDLE_VALUE)
     {
         result.u64[0] = (U64)file;
     }
+    temp_end(scratch);    
     return result;
 }
 
@@ -100,14 +110,12 @@ os_file_read(OS_Handle file, Rng1U64 rng, void *out_data)
 internal OS_FileIter*
 os_file_iter_begin(Arena *arena, String8 query, OS_FileIterFlags flags)
 {
-    OS_FileIter *iter = push_array(arena, OS_FileIter, 1);
-    iter->flags = flags;
+    OS_FileIter *iter = push_array(arena, OS_FileIter, 1);    
     iter->query = query;
+    iter->flags = flags;
     W32_FileIter *w32_iter = (W32_FileIter *)iter->memory;
-    Temp scratch = temp_begin(arena);
-    String16 path_16 = str16_from_str8(scratch.arena, query);
+    String16 path_16 = str16_from_str8(arena, iter->query);
     w32_iter->handle = FindFirstFileW((WCHAR *) path_16.str, &w32_iter->find_data);
-    temp_end(scratch);
     return iter;
 }
 
@@ -116,7 +124,6 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info)
 {
     B32 result = 0;
     W32_FileIter *w32_iter = (W32_FileIter*)iter->memory;
-    String8List iter_path_split = str8_split(arena, iter->query, str8_lit("*"), StringSplitFlag_None); 
     
     if(!(iter->flags & OS_FileIterFlag_Done) && w32_iter->handle != INVALID_HANDLE_VALUE) 
     {      
@@ -125,39 +132,45 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info)
           FilePropertiesFlags flags_properties = FilePropertyFlag_Unknown;
           DWORD attributes =  w32_iter->find_data.dwFileAttributes;
           WCHAR *file_name = w32_iter->find_data.cFileName;
-          if (file_name[0] == '.'){
+          if (file_name[0] == '.')
+          {
             if (iter->flags & OS_FileIterFlag_SkipHiddenFiles){
             usable_file = 0;
             }
           }
-          else if (file_name[1] == 0 || file_name[0] == 0){
+          else if (file_name[1] == 0 || file_name[0] == 0)
+          {
             usable_file = 0;
           }
-          else if (file_name[1] == '.' && file_name[2] == 0){
+          else if (file_name[1] == '.' && file_name[2] == 0)
+          {
             usable_file = 0;
           }
-          if(attributes & FILE_ATTRIBUTE_DIRECTORY){
+          
+          if(attributes & FILE_ATTRIBUTE_DIRECTORY)
+          {
             flags_properties |= FilePropertyFlag_IsFolder;
-            if(iter->flags & OS_FileIterFlag_SkipFolders){
+            if(iter->flags & OS_FileIterFlag_SkipFolders)
+            {
                 usable_file = 0;
             }
           }
           else {
-            if(iter->flags & OS_FileIterFlag_SkipFiles){
+            if(iter->flags & OS_FileIterFlag_SkipFiles)
+            {
               usable_file = 0;
             }        
           }
           
-          if(usable_file){
-            result = 1;            
-            
+          if(usable_file)
+          {
+            result = 1;
             out_info->name              = str8_from_16(arena, str16_cstring((U16*)file_name));
-            out_info->filename          = push_str8_cat(arena, iter_path_split.first->string, out_info->name);
             out_info->props.size        = u64_from_high_low_u32(w32_iter->find_data.nFileSizeHigh, w32_iter->find_data.nFileSizeLow);
-            out_info->props.extension   = str8_cut_from_last_dot(out_info->filename);
+            out_info->props.extension   = str8_cut_from_last_dot(out_info->name); //TODO: remove this as it's in the name
             out_info->props.flags       = flags_properties;
-            
-            if(!FindNextFileW(w32_iter->handle, &w32_iter->find_data)){
+            if(!FindNextFileW(w32_iter->handle, &w32_iter->find_data))
+            {
                 iter->flags |= OS_FileIterFlag_Done;
             }
             break;
@@ -166,7 +179,8 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info)
       } while(FindNextFileW(w32_iter->handle, &w32_iter->find_data));
     }
     
-    if(!result){
+    if(!result)
+    {
       iter->flags |= OS_FileIterFlag_Done;
     }
     return result;
@@ -179,3 +193,7 @@ os_file_iter_end(OS_FileIter *iter)
   FindClose(w32_iter->handle);
 }
 
+internal void
+os_exit_process(S32 exit_code){
+  exit(exit_code);
+}

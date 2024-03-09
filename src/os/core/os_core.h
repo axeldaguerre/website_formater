@@ -66,9 +66,10 @@ struct FileProperties
 typedef struct OS_FileInfo OS_FileInfo;
 struct OS_FileInfo
 {  
-  String8        filename; // path
-  String8        name;
-  FileProperties props;
+  String8             name; 
+  String8             root_path; 
+  FileProperties      props;
+  
 };
 
 typedef struct OS_FileInfoNode OS_FileInfoNode;
@@ -91,6 +92,16 @@ struct OS_FileInfoArray
 {
   OS_FileInfo *infos;
   U64          count;  
+};
+
+typedef U32 OS_AccessFlags;
+enum
+{
+  OS_AccessFlag_Read       = (1<<0),
+  OS_AccessFlag_Write      = (1<<1),
+  OS_AccessFlag_Execute    = (1<<2),
+  OS_AccessFlag_ShareRead  = (1<<3),
+  OS_AccessFlag_ShareWrite = (1<<4),
 };
 
 internal OS_FileIter *    os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags);
