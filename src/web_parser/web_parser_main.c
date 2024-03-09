@@ -25,7 +25,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   int argc;
   WCHAR **argv_16 = CommandLineToArgvW(command_line, &argc);
   char **argv = push_array(perm_arena, char *, argc);  
-
+  String8 root_path = os_current_directory(perm_arena);
   for(int i = 1;i < argc; ++i) 
   {
     String16 argv16 = str16_cstring((U16*)argv_16[i]);
@@ -34,15 +34,20 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   }
   
   if(argc > 1) 
-  {    
+  {
     String8 target_path = str8((U8*)argv[1], cstr8_length((U8*)argv[1]));
     OS_FileInfoList *info_list = push_array(perm_arena, OS_FileInfoList, 1);
     // use OS_FileIterFlag flags
     os_push_files_infos(perm_arena, target_path, OS_FileIterFlag_SkipHiddenFiles, info_list);
-    String8 fullErrors = html_parse(perm_arena, info_list);
-    String8 path_logs = push_str8_cat(perm_arena, target_path, str8_lit("/logs.txt")); 
-    OS_Handle file = os_file_open(perm_arena, path_logs, OS_AccessFlag_Write);
-    os_file_write(file, r1u64(0, fullErrors.size), fullErrors.str);
+    
+    String8 full_errors = html_parse(perm_arena, info_list);
+    String8 log_file_path = push_str8_cat(perm_arena, root_path, str8_lit("\\logs.txt"));
+    if(argc >= 2)
+    {
+        log_file_path = push_str8_cat(perm_arena, str8((U8*)argv[2], cstr8_length((U8*)argv[2])), str8_lit("\\logs.txt"));
+    }
+    os_write_data_to_file_path(perm_arena, log_file_path, full_errors);
+    int a = 0;
   }
   
   return 0;

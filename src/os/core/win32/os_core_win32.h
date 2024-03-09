@@ -21,7 +21,7 @@ internal void          os_exit_process(S32 exit_code);
 internal OS_Handle     os_file_open(Arena *arena, String8 path, OS_AccessFlags flags);
 internal void          os_file_write(OS_Handle file, Rng1U64 rng, void *data);
 internal U64           os_file_read(OS_Handle file, Rng1U64 rng, void *out_data);
-
+internal void          os_file_close(OS_Handle file);
 internal OS_FileIter * os_file_iter_begin(Arena *arena, String8 query, OS_FileIterFlags flags);
 internal B32           os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info);
 internal void          os_file_iter_end(OS_FileIter *iter);

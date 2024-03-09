@@ -101,3 +101,25 @@ os_push_files_infos(Arena *arena, String8 query, OS_FileIterFlags flags, OS_File
     os_file_iter_end(iter);
   }
 }
+
+internal B32
+os_write_data_to_file_path(Arena *arena, String8 path, String8 data)
+{
+  B32 good = 0;
+  OS_Handle file = os_file_open(arena, path, OS_AccessFlag_Write);
+  if(!os_handle_match(file, os_handle_zero()))
+  {
+    good = 1;
+    os_file_write(file, r1u64(0, data.size), data.str);
+    os_file_close(file);
+  }
+  return good;
+}
+
+internal void
+os_file_close(OS_Handle file)
+{
+  if(os_handle_match(file, os_handle_zero())) { return; }
+  HANDLE handle = (HANDLE)file.u64[0];
+  CloseHandle(handle);
+}

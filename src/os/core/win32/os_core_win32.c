@@ -50,6 +50,7 @@ os_file_open(Arena *arena, String8 path, OS_AccessFlags flags)
     if(flags & OS_AccessFlag_ShareRead)  {share_mode |= FILE_SHARE_READ;}
     if(flags & OS_AccessFlag_ShareWrite) {share_mode |= FILE_SHARE_WRITE;}
     if(flags & OS_AccessFlag_Write)   {creation_disposition = CREATE_ALWAYS;}
+    if(flags & OS_AccessFlag_Write)   {access_flags |= GENERIC_WRITE;}
 
     HANDLE file = CreateFileW((WCHAR *)path16.str, access_flags, FILE_SHARE_READ, 0, creation_disposition, 0, 0);
     // DWORD Error = GetLastError();
@@ -77,6 +78,11 @@ os_file_write(OS_Handle file, Rng1U64 rng, void *data)
         // TODO(Axel): Test the maximum write size
         U32 amount_32 = u32_from_u64(amount_64);
         BOOL success  = WriteFile(w32_handle, memory, (DWORD)amount_32,  (DWORD*)&write_size, 0);
+        DWORD Error = GetLastError();
+        if(Error == 5)
+        {
+          printf("Access denied: can't write in file");
+        }
         if(success == 0) break;
         total_write_size += write_size;
     }
@@ -196,4 +202,26 @@ os_file_iter_end(OS_FileIter *iter)
 internal void
 os_exit_process(S32 exit_code){
   exit(exit_code);
+}
+
+internal String8 os_current_directory(Arena *arena)
+{
+  Temp scratch = temp_begin(arena);
+  DWORD length = GetCurrentDirectoryW(0, 0);
+  U16 *memory = push_array_no_zero(scratch.arena, U16, length + 1);
+  length = GetCurrentDirectoryW(length + 1, (WCHAR*)memory);
+  temp_end(scratch);
+  String8 dir_path = str8_from_16(arena, str16(memory, length));
+  return dir_path;
+}
+
+internal String8 os_exe_path(Arena *arena)
+{
+  Temp scratch = temp_begin(arena);
+  DWORD size = KB(32);
+  U16 *buffer = push_array_no_zero(scratch.arena, U16, size);
+  DWORD length = GetModuleFileNameW(0, (WCHAR*)buffer, size);
+  temp_end(scratch);
+  String8 exe_path = str8_from_16(scratch.arena, str16(buffer, length));
+  return exe_path;
 }
