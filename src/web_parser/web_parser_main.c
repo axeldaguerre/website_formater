@@ -46,7 +46,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         log_file_path = push_str8_cat(perm_arena, str8((U8*)argv[2], cstr8_length((U8*)argv[2])), str8_lit("\\logs.txt"));
     }
     os_write_data_to_file_path(perm_arena, log_file_path, full_errors);
-    int a = 0;
   }
   
   return 0;

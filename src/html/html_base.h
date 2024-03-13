@@ -1,30 +1,32 @@
 #ifndef PARSER_BASE_H
 #define PARSER_BASE_H
 
-// HTML Token
-typedef U32 HTMLTokenType;
+typedef U32 RawTokenType;
 enum
 {
-  HTMLTokenType_dummy = (1 << 0),
-  HTMLTokenType_whitespace = (1 << 1),
-  HTMLTokenType_angle_bracket_open = (1 << 2),
-  HTMLTokenType_angle_bracket_close = (1 << 3),
-  HTMLTokenType_angle_bracket_open_then_slash = (1 << 4),
-  HTMLTokenType_angle_slash_then_bracket_close = (1 << 5),
-  HTMLTokenType_slash = (1 << 6),
+  RawTokenType_null                           = (1 << 0),
   
-  HTMLTokenType_Error = (1 << 30),
-  HTMLTokenType_Count = (1 << 31),
+  RawTokenType_dummy                          = (1 << 1),
+  RawTokenType_whitespace                     = (1 << 2),
+  RawTokenType_angle_bracket_open             = (1 << 3),
+  RawTokenType_angle_bracket_close            = (1 << 4),
+  RawTokenType_angle_bracket_open_then_slash  = (1 << 5),
+  RawTokenType_angle_slash_then_bracket_close = (1 << 6),
+  RawTokenType_slash                          = (1 << 7),
+  
+  RawTokenType_Error                          = (1 << 30),
 };
+
+#define FIRST_TOKEN_TAG_FLAGS (RawTokenType_angle_bracket_open | RawTokenType_angle_bracket_open_then_slash)
+#define LAST_TOKEN_TAG_FLAGS (RawTokenType_angle_slash_then_bracket_close | RawTokenType_angle_bracket_close)
 
 typedef struct HTMLToken HTMLToken;
 struct HTMLToken
 {
-  HTMLTokenType type;
-  String8       string;
+  RawTokenType type;
+  String8      string;
 };
 
-// HTML Element
 typedef U32 HTMLTagType;
 enum
 {
@@ -36,20 +38,29 @@ enum
   HTMLTag_Count,
 };
 
-typedef U32 HTMLTagClosingType;
+typedef U32 HTMLEnclosingType;
 enum
 {  
-  HTMLTagClosingType_Paired,
-  HTMLTagClosingType_Unique,
-  HTMLTagClosingType_Self, 
+  HTMLEnclosingType_Null,
+  HTMLEnclosingType_opening,
+  HTMLEnclosingType_closing, 
+};
+
+typedef U32 HTMLTagEnclosingType;
+enum
+{  
+  HTMLTagEnclosingType_Paired,
+  HTMLTagEnclosingType_Unique,
+  HTMLTagEnclosingType_Self, 
 };
 
 typedef struct HTMLTagEncoding HTMLTagEncoding;
 struct HTMLTagEncoding
 {
   HTMLTagType            type;
-  HTMLTagClosingType closing_type;
+  HTMLTagEnclosingType enclosing_type;
   String8            tag_name;
+  
 };
 
 HTMLTagEncoding html_encoding_table[] =
@@ -61,15 +72,16 @@ HTMLTagEncoding html_encoding_table[] =
 typedef struct HTMLTag HTMLTag;
 struct HTMLTag
 {
-  HTMLTagEncoding encoding;
-  Rng1U64 range[2];
+  HTMLTagEncoding   encoding;
+  HTMLEnclosingType enenclosing_type;
+  Rng1U64           range[2];
 };
 
 typedef struct HTMLElement HTMLElement;
 struct HTMLElement
 {
-  HTMLElement     *next_sibbling;
-  HTMLTag         tag;
+  HTMLElement *next_sibbling;
+  HTMLTag      tag;
 };
 
 typedef struct HTMLElementNode HTMLElementNode;
@@ -86,14 +98,14 @@ struct HTMLElementList
   HTMLElementNode *last;
   U64           count;
 };
-// Logging
+
 typedef U32 HTMLErrorType;
 enum
 {
-  HTMLErrorType_Null,
+  HTMLErrorType_Null                 = (0),
   
-  HTMLErrorType_unexpected_token,
-    
+  HTMLErrorType_unexpected_token     = (0 << 1),
+  HTMLErrorType_wrong_enclosing_type = (1 << 1),
 };
 
 
@@ -104,15 +116,10 @@ struct HTMLError
   U64           at;
 };
 
-// Parser
 typedef struct HTMLParser HTMLParser;
 struct HTMLParser
 {
-  //TODO: saving the current token ? could get ride of multiple lines
   String8            string;
   HTMLError          error;
   U64                at;
 };
-
-
-

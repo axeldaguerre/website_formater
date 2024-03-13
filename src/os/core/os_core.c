@@ -123,3 +123,4 @@ os_file_close(OS_Handle file)
   HANDLE handle = (HANDLE)file.u64[0];
   CloseHandle(handle);
 }
+

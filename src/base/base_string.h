@@ -114,6 +114,7 @@ internal String16      str16_from_str8(Arena *arena, String8 str);
 internal String8       str8(U8 *str, U64 size);
 internal U64           cstr8_length(U8 *str);
 internal String8       str8_from_16(Arena *arena, String16 str);
+internal String8       str8_cstring(char *c);
 internal U32           utf8_encode(U8 *str, U32 codepoint);
 internal String8       push_str8_copy(Arena *arena, String8 string);
 internal String8       push_str8_cat(Arena *arena, String8 string, String8 cat);
@@ -134,7 +135,11 @@ internal String8       str8_cut_from_last_dot(String8 string);
 internal U64           str8_find_needle(String8 string, U64 start_pos, String8 needle, StringMatchFlags flags);
 internal String8       str8_chop_last_dot(String8 string);
 internal String8       str8_prefix(String8 str, U64 size);
+internal String8       cstyle_hex_from_u64(Arena *arena, U64 x, B32 caps);
+internal U64 cstring8_length(U8 *c);
+
 #define str8_lit(S)    str8((U8*)(S), sizeof(S) - 1)
 #define str8_lit_comp(S) {(U8*)(S), sizeof(S) - 1}
+#define str16_lit(S)    str16((U16*)(S), sizeof(S) - 1)
 
 #endif  

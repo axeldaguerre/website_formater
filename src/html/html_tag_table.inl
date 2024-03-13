@@ -25,7 +25,7 @@
 
 
 #ifndef TAG
-  #define TAG(Tag, ClosingType, ...) { HTMLTag_##Tag, HTMLTagClosingType_##ClosingType, __VA_ARGS__ },
+  #define TAG(Tag, ClosingType, ...) { HTMLTag_##Tag, HTMLTagEnclosingType_##ClosingType, __VA_ARGS__ },
 #endif
 
 #ifndef true

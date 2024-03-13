@@ -25,3 +25,6 @@ internal void          os_file_close(OS_Handle file);
 internal OS_FileIter * os_file_iter_begin(Arena *arena, String8 query, OS_FileIterFlags flags);
 internal B32           os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *out_info);
 internal void          os_file_iter_end(OS_FileIter *iter);
+internal OS_Handle     os_library_open(Arena *arena, String8 path);
+internal void          os_library_close(OS_Handle lib);
+internal VoidProc*     os_library_load_proc(Arena *arena, OS_Handle lib, String8 name);

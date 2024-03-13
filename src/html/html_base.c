@@ -1,5 +1,5 @@
 internal HTMLElementNode*
-html_token_push(Arena *arena, HTMLElementList *list, HTMLElement element)
+html_element_push(Arena *arena, HTMLElementList *list, HTMLElement element)
 {
   HTMLElementNode *node = push_array_no_zero(arena, HTMLElementNode, 1);
   SLLPush(list->first, list->last, node);
@@ -21,81 +21,126 @@ html_is_parsing(HTMLParser *parser)
   return result;
 }
 
-// TODO: a flags system in order to do the flags = all_not_x
 internal HTMLToken
-html_get_token(HTMLParser *parser)
+html_get_token(String8 string, U64 at)
 {
   HTMLToken result = {0};
-  result.type = HTMLTokenType_dummy;
-  U64 at = parser->at;
-  result.string.str = parser->string.str + at;
+  result.type = RawTokenType_null;
+  result.string.str = string.str + at;
   result.string.size = 1;
-  switch(parser->string.str[at])
+  U8 value = string.str[at];
+  switch(value)
   {
     case '<': 
     {
-      if(parser->string.str[at+1] == '/')
+      if(string.str[at+1] == '/')
       {
         result.string.size = 2;
-        result.type = HTMLTokenType_angle_bracket_open_then_slash;
+        result.type = RawTokenType_angle_bracket_open_then_slash;
       }
       else 
       {
-        result.type = HTMLTokenType_angle_bracket_open;
+        result.type = RawTokenType_angle_bracket_open;
       }
     } break;
     case '/': 
     {
-      if(parser->string.str[at+1] == '>')
+      if(string.str[at+1] == '>')
       {
         result.string.size = 2;
-        result.type = HTMLTokenType_angle_slash_then_bracket_close;
+        result.type = RawTokenType_angle_slash_then_bracket_close;
       }
       else 
       {
-        result.type = HTMLTokenType_slash;
+        result.type = RawTokenType_slash;
       }
       
     } break;
     case '>': 
     { 
-      result.type = HTMLTokenType_angle_bracket_close;
+      result.type = RawTokenType_angle_bracket_close;
     } break;      
     case ' ': 
     { 
-      result.type = HTMLTokenType_whitespace;
+      result.type = RawTokenType_whitespace;
     } break;
     default :
     {
+      result.type = RawTokenType_dummy;
+    } break;
+  }  
+  return result;
+}
+
+internal void 
+html_validate_tag(HTMLParser *parser, HTMLTagEncoding encoding, String8 tag)
+{
+  if(!encoding.type)
+  {
+    parser->error.type |= HTMLErrorType_unexpected_token;
+  }
+  
+  RawTokenType valide_last_token_type = {0};
+  switch(encoding.enclosing_type)
+  {
+    case HTMLTagEnclosingType_Unique:
+    case HTMLTagEnclosingType_Paired:
+    {
+      valide_last_token_type = RawTokenType_angle_bracket_close;
+    } break;
+    case HTMLTagEnclosingType_Self:
+    {
+      valide_last_token_type = RawTokenType_angle_slash_then_bracket_close;
     } break;
   }
-  at += result.string.size;
-  parser->at = at;
-  return result;
+  
+  HTMLToken last_token = {0};
+  U64 at = 0;
+  
+  while(at < tag.size && last_token.type != LAST_TOKEN_TAG_FLAGS)
+  {
+    last_token = html_get_token(tag, at);
+    ++at;
+  }
+  
+  if(last_token.type != valide_last_token_type)
+  {
+     parser->error.type |= HTMLErrorType_wrong_enclosing_type;
+  }
+  
+  if(parser->error.type != HTMLErrorType_Null)
+  {
+    parser->error.at = parser->at;
+  }
 }
 
 internal HTMLTag
 html_get_next_tag(Arena *arena, HTMLParser *parser)
 {
-  HTMLToken token = {0};
-  HTMLTag result = {0};
-  Rng1U64 range = {0};
-  HTMLTagEncoding encoding = {0};
-  do 
-  {
-     token = html_get_token(parser);
-  } while(token.type != HTMLTokenType_angle_bracket_open && token.type != HTMLTokenType_angle_bracket_open_then_slash);
+  HTMLToken token            = {0};
+  HTMLTag result             = {0};
+  Rng1U64 range              = {0};
+  HTMLTagEncoding encoding   = {0};
+  U64 at                     = parser->at;
   
-  range.min = parser->at - token.string.size - 1;
-  U64 count = 0;
-  while(token.string.str[count] != '>') 
+  while(html_is_in_bounds(parser, at) && !(token.type & FIRST_TOKEN_TAG_FLAGS))
   {
-    ++count;
+     token = html_get_token(parser->string, at);
+     at   += token.string.size;
   }
-  String8 tag = {0};
-  tag.size = count;
-  tag.str = push_array_no_zero(arena, U8, count);
-  tag.str = token.string.str;
+  if(token.type == RawTokenType_null) return result;
+  range.min = at;
+  
+  while(html_is_in_bounds(parser, at) && !(token.type & LAST_TOKEN_TAG_FLAGS))
+  {
+     token = html_get_token(parser->string, at);
+     at   += token.string.size;
+  } 
+  if(token.type == RawTokenType_null) return result;
+  
+  U64 size = at - range.min;
+  range.max = range.min + size + 1;
+  String8 tag = str8(parser->string.str + range.min, size);
   String8 split = str8_lit(" </>");
   String8List tag_split_open = str8_split_by_string_chars(arena, tag, split, StringSplitFlag_None);
   
@@ -115,41 +160,8 @@ html_get_next_tag(Arena *arena, HTMLParser *parser)
     if(is_match) break;
   }
   
-  if(encoding.type == HTMLTag_None)
-  {
-    parser->error.type = HTMLErrorType_unexpected_token;
-    parser->error.at = parser->at;
-  }
-  switch(encoding.closing_type)
-  {
-    case HTMLTagClosingType_Paired:
-    {
-      do {
-        token = html_get_token(parser);
-      } while(token.type != HTMLTokenType_angle_bracket_close);
-    } break;
-    
-    case HTMLTagClosingType_Self:
-    {
-      do {
-        token = html_get_token(parser);
-      } while(token.type != HTMLTokenType_angle_slash_then_bracket_close);
-      result.range[1] = r1u64(parser->at-token.string.size, parser->at);
-    } break;
-    
-    case HTMLTagClosingType_Unique:
-    {
-      do {
-        token = html_get_token(parser);
-      // } while(token.type == HTMLTokenType_dummy || token.type == HTMLTokenType_whitespace);
-      } while(token.type != HTMLTokenType_angle_bracket_close);
-      result.range[1] = r1u64(parser->at-token.string.size, parser->at);
-    } break;
-    default: 
-    {
-    } break;
-  }
-  range.max = range.min + tag.size + 1;
+  html_validate_tag(parser, encoding, tag);
+  
   if(result.range[0].max == 0)
   {
     result.range[0] = range;
@@ -159,38 +171,34 @@ html_get_next_tag(Arena *arena, HTMLParser *parser)
     result.range[1] = range;
   }
   result.encoding = encoding;
+  parser->at = at;
   return result;
 }
 
 internal HTMLElement *
 html_parse_element_paired(Arena *arena, HTMLParser *parser, HTMLTag *end);
 internal HTMLElement *
-html_parse_element(Arena *arena, HTMLParser *parser, HTMLTag open_tag)
+html_parse_element(Arena *arena, HTMLParser *parser)
 {
   HTMLElement *result = push_array_no_zero(arena, HTMLElement, 1);
-  HTMLTag tag = open_tag;
+  HTMLTag opening_tag = html_get_next_tag(arena, parser);
   
-  switch(open_tag.encoding.closing_type)
+  switch(opening_tag.encoding.enclosing_type)
   {
-    case HTMLTagClosingType_Paired:
+    case HTMLTagEnclosingType_Paired:
     {
-      result->next_sibbling = html_parse_element_paired(arena, parser, &tag);
+      result->next_sibbling = html_parse_element_paired(arena, parser, &opening_tag);
+      HTMLTag closing_tag = html_get_next_tag(arena, parser);
     } break;
-    case HTMLTagClosingType_Unique:
-    {
-    } break;
-    case HTMLTagClosingType_Self:
+    case HTMLTagEnclosingType_Unique:
     {
     } break;
-    default:
+    case HTMLTagEnclosingType_Self:
     {
-    } break;
+    } break;    
   }
-  do {
-    ++parser->at;
-  } while(char_is_whitespace(parser->string.str[parser->at]));
   
-  result->tag = tag;
+  result->tag = opening_tag;
   return result;
 }
 
@@ -206,13 +214,9 @@ html_parse_element_paired(Arena *arena, HTMLParser *parser, HTMLTag *tag)
     {
       break;
     }
-    HTMLElement *element = html_parse_element(arena, parser, next_tag);
+    HTMLElement *element = html_parse_element(arena, parser);
     if(element)
-    {
-      /*
-        TODO: why it does not work in cpp, it should
-        last_child = (last_child ? last_child->next_sibbling : first_child) = ;
-      */ 
+    {      
       if(last_child)
       {
         last_child->next_sibbling = element;
@@ -238,17 +242,15 @@ html_get_error_msg(Arena *arena, HTMLParser *parser, String8 file_path)
   str8_list_push(arena, &list, str8_from_u64(arena, parser->error.at, 10, 7, 0));
   str8_list_push(arena, &list, str8_lit("Error type:"));
   
-  switch(parser->error.type)
+  HTMLError error = parser->error;
+  
+  if(error.type & HTMLErrorType_unexpected_token)
   {
-    case HTMLErrorType_unexpected_token: 
-    {
-      str8_list_push(arena, &list, str8_lit("Unexpected token:"));
-    } break;
-    
-    default: 
-    {
-      str8_list_push(arena, &list, str8_lit("result"));
-    } break; 
+    str8_list_push(arena, &list, str8_lit("Unexpected token:\n"));
+  }
+  if(error.type & HTMLErrorType_wrong_enclosing_type)
+  {
+    str8_list_push(arena, &list, str8_lit("Wrong enclosing type:\n"));
   }  
   String8 result = str8_list_join(arena, &list, str8_lit("\n"));
   return result;
@@ -274,25 +276,30 @@ html_parse(Arena *arena, OS_FileInfoList *info_list)
 
     U8 *memory = push_array_no_zero(arena, U8, size_file);
     U64 size = os_file_read(handle, rng_1u64(0, size_file), memory);
-    
     HTMLParser parser = {0};
     parser.string.str = memory;
     parser.string.size = size;
     
-    HTMLElementList *token_list = push_array(arena, HTMLElementList, 1);
+    HTMLElementList *el_list = push_array(arena, HTMLElementList, 1);
+    HTMLElement *first_el = {0};
+    HTMLElement *last_el  = {0};
     while(html_is_parsing(&parser))
     {
-      HTMLTag tag = html_get_next_tag(arena, &parser);
-      HTMLElement *element  = html_parse_element(arena, &parser, tag);
-      html_token_push(arena, token_list, *element);    
-      if(parser.error.type == HTMLErrorType_unexpected_token)
+      HTMLElement *el = html_parse_element(arena, &parser);
+      if(!el) break;
+      if(!first_el) first_el = el;
+      if(last_el) last_el->next_sibbling = el;
+      last_el = el;
+      
+      if(parser.error.type != HTMLErrorType_Null)
       {
         String8 error_msg = html_get_error_msg(arena, &parser, file_name);
         str8_list_push(arena, error_messages, error_msg);
-        // break;
-      }
-      
-  
+      } 
+    }
+    if(first_el)
+    {
+      html_element_push(arena, el_list, *first_el);
     }
     result = str8_list_join(arena, error_messages, str8_lit("\n"));
   } 

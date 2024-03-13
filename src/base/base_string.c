@@ -572,6 +572,13 @@ str8_cut_from_last_dot(String8 string)
   return result;
 }
 
+internal U64
+cstring8_length(U8 *c){
+  U8 *p = c;
+  for (;*p != 0; p += 1);
+  return(p - c);
+}
+
 // Conversions
 internal String8
 str8_from_u64(Arena *arena, U64 u64, U32 radix, U8 min_digits, U8 digit_group_separator)
@@ -740,3 +747,69 @@ str8_find_needle(String8 string, U64 start_pos, String8 needle, StringMatchFlags
   return(result);
 }
 
+
+internal U64
+u64_from_str8(String8 string, U32 radix)
+{
+ AssertAlways(2 <= radix && radix <= 16);
+ local_persist U8 char_to_value[] =
+ {
+  0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+  0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+ };
+ U64 value = 0;
+ for (U64 i = 0; i < string.size; i += 1)
+ {
+  value *= radix;
+  U8 c = string.str[i];
+  value += char_to_value[(c - 0x30)&0x1F];
+ }
+ return value;
+}
+
+
+internal String8
+cstyle_hex_from_u64(Arena *arena, U64 x, B32 caps)
+{
+ local_persist char int_value_to_char[] = "0123456789abcdef";
+ U8 buffer[10];
+ U8 *opl = buffer + 10;
+ U8 *ptr = opl;
+ if(x == 0)
+ {
+  ptr -= 1;
+  *ptr = '0';
+ }
+ else
+ {
+  for(;;)
+  {
+   U32 val = x%16;
+   x /= 16;
+   U8 c = (U8)int_value_to_char[val];
+   if(caps)
+   {
+    c = char_to_upper(c);
+   }
+   ptr -= 1;
+   *ptr = c;
+   if (x == 0)
+   {
+    break;
+   }
+  }
+ }
+ ptr -= 1;
+ *ptr = 'x';
+ ptr -= 1;
+ *ptr = '0';
+ 
+ String8 result = {0};
+ result.size = (U64)(ptr - buffer);
+ result.str = push_array_no_zero(arena, U8, result.size);
+ MemoryCopy(result.str, buffer, result.size);
+ 
+ return result;
+}

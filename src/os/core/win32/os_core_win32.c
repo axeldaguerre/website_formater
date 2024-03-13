@@ -225,3 +225,33 @@ internal String8 os_exe_path(Arena *arena)
   String8 exe_path = str8_from_16(scratch.arena, str16(buffer, length));
   return exe_path;
 }
+
+internal OS_Handle
+os_library_open(Arena *arena, String8 path)
+{
+  Temp scratch = temp_begin(arena);
+  String16 path16 = str16_from_str8(scratch.arena, path);
+  HMODULE mod = LoadLibraryW((LPCWSTR)path16.str);
+  OS_Handle result = { (U64)mod };
+  temp_end(scratch);
+  return(result);
+}
+
+internal VoidProc*
+os_library_load_proc(Arena *arena, OS_Handle lib, String8 name)
+{
+  Temp scratch = temp_begin(arena);
+  HMODULE mod = (HMODULE)lib.u64[0];
+  name = push_str8_copy(scratch.arena, name);
+  VoidProc *result = (VoidProc*)GetProcAddress(mod, (LPCSTR)name.str);
+  temp_end(scratch);
+  return(result);
+}
+
+internal void
+os_library_close(OS_Handle lib)
+{
+  HMODULE mod = (HMODULE)lib.u64[0];
+  FreeLibrary(mod);
+}
+
