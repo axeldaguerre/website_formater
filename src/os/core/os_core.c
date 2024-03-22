@@ -12,7 +12,7 @@ os_handle_match(OS_Handle a, OS_Handle b)
 }
 
 internal OS_FileInfoNode*
-os_file_info_push_list(Arena *arena, OS_FileInfoList *list, OS_FileInfo *info)
+os_file_info_list_push(Arena *arena, OS_FileInfoList *list, OS_FileInfo *info)
 {  
   OS_FileInfoNode *node = push_array(arena, OS_FileInfoNode, 1);
   node->info = *info;
@@ -36,7 +36,7 @@ os_file_info_array_from_list(Arena *arena, OS_FileInfoList *list)
 }
 
 internal OS_HandleNode*
-os_handle_push_list(Arena *arena, OS_HandleList *list, OS_Handle *handle)
+os_handle_list_push(Arena *arena, OS_HandleList *list, OS_Handle *handle)
 {
   OS_HandleNode *node = push_array_no_zero(arena, OS_HandleNode, list->count);
   SLLPush(list->first, list->last, node);
@@ -89,7 +89,7 @@ os_push_files_infos(Arena *arena, String8 query, OS_FileIterFlags flags, OS_File
       if(os_file_iter_next(arena, iter, info))
       {
         info->root_path = root;
-        os_file_info_push_list(arena, list, info);
+        os_file_info_list_push(arena, list, info);
         if(info->props.flags & FilePropertyFlag_IsFolder)
         {
           String8 folder_path = push_str8_cat(arena, root, info->name);
@@ -124,3 +124,14 @@ os_file_close(OS_Handle file)
   CloseHandle(handle);
 }
 
+internal String8List
+os_string_list_from_argcv(Arena *arena, int argc, char **argv)
+{
+  String8List result = {0};
+  for(int i = 0; i < argc; i += 1)
+  {
+    String8 str = str8_cstring(argv[i]);
+    str8_list_push(arena, &result, str);
+  }
+  return result;
+}

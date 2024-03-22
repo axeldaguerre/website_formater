@@ -17,8 +17,9 @@ union Rng1U64
   U64 v[2];
 };
 
-
+internal U64 dim_1u64(Rng1U64 r)           {U64 c = r.max-r.min; return c;}
 internal Rng1U64 rng_1u64(U64 min, U64 max){Rng1U64 r = {min, max}; if(r.min > r.max) { Swap(U64, r.min, r.max); } return r;}
+
 #define r1u64(min, max) rng_1u64((min), (max))
 
 #endif

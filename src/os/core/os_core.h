@@ -104,7 +104,7 @@ enum
   OS_AccessFlag_ShareWrite = (1<<4),
 };
 
-internal OS_FileIter *    os_file_iter_begin(Arena *arena, String16 path, OS_FileIterFlags flags);
+internal OS_FileIter *    os_file_iter_begin(Arena *arena, String8 path, OS_FileIterFlags flags);
 internal B32              os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out);
 internal void             os_file_iter_end(OS_FileIter *iter);
 internal void             os_push_files_infos(Arena *arena, String8 path, OS_FileIterFlags flags, OS_FileInfoList *list);

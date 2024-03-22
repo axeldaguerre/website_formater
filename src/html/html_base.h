@@ -1,5 +1,5 @@
-#ifndef PARSER_BASE_H
-#define PARSER_BASE_H
+#ifndef HTML_BASE_H
+#define HTML_BASE_H
 
 typedef U32 RawTokenType;
 enum
@@ -57,23 +57,44 @@ enum
 typedef struct HTMLTagEncoding HTMLTagEncoding;
 struct HTMLTagEncoding
 {
-  HTMLTagType            type;
+  HTMLTagType          type;
   HTMLTagEnclosingType enclosing_type;
-  String8            tag_name;
-  
+  String8              tag_name;
+  TextType             text_types[5]; // TODO: no constant size
 };
 
-HTMLTagEncoding html_encoding_table[] =
+internal HTMLTagEncoding html_encoding_table[] =
 {
  #include "html_tag_table.inl"
 };
 
-#endif
+internal HTMLTagEncoding
+html_get_encoding_from_meaning(TextType type)
+{
+  HTMLTagEncoding result = {0};
+  for(U32 idx = 0; idx < ArrayCount(html_encoding_table); ++idx)
+  {
+    HTMLTagEncoding encoding = html_encoding_table[idx];
+    for(U8 text_type_idx = 0; 
+      text_type_idx < ArrayCount(encoding.text_types); 
+      ++text_type_idx)
+      {
+        if(encoding.text_types[text_type_idx] == type)
+        {
+          result = encoding;
+          break;
+        }
+      }
+    
+  }
+  return result;
+}
+
 typedef struct HTMLTag HTMLTag;
 struct HTMLTag
 {
   HTMLTagEncoding   encoding;
-  HTMLEnclosingType enenclosing_type;
+  HTMLEnclosingType enclosing_type;
   Rng1U64           range[2];
 };
 
@@ -82,6 +103,7 @@ struct HTMLElement
 {
   HTMLElement *next_sibbling;
   HTMLTag      tag;
+  String8      data;
 };
 
 typedef struct HTMLElementNode HTMLElementNode;
@@ -119,7 +141,16 @@ struct HTMLError
 typedef struct HTMLParser HTMLParser;
 struct HTMLParser
 {
-  String8            string;
-  HTMLError          error;
-  U64                at;
+  String8   string;
+  HTMLError error;
+  U64       at;
 };
+
+typedef struct ReadingContent ReadingContent;
+struct ReadingContent
+{
+  HTMLElementList html;
+  String8          text;
+};
+
+#endif

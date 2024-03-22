@@ -1,3 +1,19 @@
+#ifndef STB_SPRINTF_IMPLEMENTATION
+# define STB_SPRINTF_IMPLEMENTATION
+# define STB_SPRINTF_STATIC
+# include "third_party/stb/stb_sprintf.h"
+#endif
+// NOTE: Includes reverses for uppercase and lowercase hex.
+read_only global U8 integer_symbol_reverse[128] = {
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+};
 
 internal B32
 char_is_lower(U8 c)
@@ -52,6 +68,18 @@ char_is_whitespace(U8 c)
 }
 
 internal B32
+char_is_digit(U8 c, U32 base){
+  B32 result = 0;
+  if (0 < base && base <= 16){
+    U8 val = integer_symbol_reverse[c];
+    if (val < base){
+      result = 1;
+    }
+  }
+  return(result);
+}
+
+internal B32
 char_is_alpha(U8 c)
 {
   return(char_is_upper(c) || char_is_lower(c));
@@ -84,9 +112,9 @@ push_str8_copy(Arena *arena, String8 s)
 {
   String8 result = {0};
   result.size = s.size;
-  result.str = push_array_no_zero(arena, U8, result.size);
+  result.str = push_array_no_zero(arena, U8, result.size+1);
   MemoryCopy(result.str, s.str, s.size);
-
+  result.str[result.size] = 0;
   return result;
 }
 
@@ -126,6 +154,12 @@ str8(U8 *str, U64 size)
   return str8;
 }
 
+internal String8
+str8_cstring(char *c)
+{
+  String8 result = {(U8*)c, cstring8_length((U8*)c)};
+  return(result);
+}
 internal UnicodeDecode
 utf16_decode(U16 *str, U64 remain)
 {
@@ -340,6 +374,21 @@ str8_chop_last_slash(String8 string)
   return string;
 }
 
+internal String8
+str8_substr(String8 str, Rng1U64 range){
+  range.min = ClampTop(range.min, str.size);
+  range.max = ClampTop(range.max, str.size);
+  str.str += range.min;
+  str.size = dim_1u64(range);
+  return(str);
+}
+
+internal String8
+str8_suffix(String8 str, U64 size)
+{
+  return str8_substr(str, rng_1u64(str.size-size, str.size));
+}
+
 internal String8 
 str8_postfix(String8 str, U64 size)
 {
@@ -379,6 +428,26 @@ str16_from_str8(Arena *arena, String8 utf8)
   return result;
 }
 
+internal String8
+str8_skip_chop_whitespace(String8 string){
+  U8 *first = string.str;
+  U8 *opl = first + string.size;
+  for (;first < opl; first += 1){
+    if (!char_is_whitespace(*first)){
+      break;
+    }
+  }
+  for (;opl > first;){
+    opl -= 1;
+    if (!char_is_whitespace(*opl)){
+      opl += 1;
+      break;
+    }
+  }
+  String8 result = str8_range(first, opl);
+  return(result);
+}
+
 internal String8Node*
 str8_list_push_node_set_string(String8List *list, String8Node *node, String8 string){
   SLLQueuePush(list->first, list->last, node);
@@ -410,9 +479,43 @@ str8_array_from_list(Arena *arena, String8List *list)
   
   return array;
 }
+// Replace all join by this one
+internal String8
+str8_list_join(Arena *arena, String8List *list, StringJoin *optional_params){
+  StringJoin join = {0};
+  if (optional_params != 0){
+    MemoryCopyStruct(&join, optional_params);
+  }
+  
+  U64 sep_count = 0;
+  if (list->node_count > 0){
+    sep_count = list->node_count - 1;
+  }
+  
+  String8 result;
+  result.size = join.pre.size + join.post.size + sep_count*join.sep.size + list->total_size;
+  U8 *ptr = result.str = push_array_no_zero(arena, U8, result.size + 1);
+  
+  MemoryCopy(ptr, join.pre.str, join.pre.size);
+  ptr += join.pre.size;
+  for (String8Node *node = list->first;
+       node != 0;
+       node = node->next){
+    MemoryCopy(ptr, node->string.str, node->string.size);
+    ptr += node->string.size;
+    if (node->next != 0){
+      MemoryCopy(ptr, join.sep.str, join.sep.size);
+      ptr += join.sep.size;
+    }
+  }
+  MemoryCopy(ptr, join.post.str, join.post.size);
+  ptr += join.post.size;
+  *ptr = 0;
+  return(result);
+}
 
 internal String8
-str8_list_join(Arena *arena, String8List *list, String8 separator)
+str8_list_join_TO_DELETE(Arena *arena, String8List *list, String8 separator)
 {  
   String8 result;
   result.size = list->total_size;
@@ -477,7 +580,7 @@ str8_split(Arena *arena, String8 string, U8 *split_chars, U64 split_char_count, 
 }
 
 internal void
-str8_split_push_list(Arena *arena, String8List *list, U8 *split_chars, U64 split_chars_count, 
+str8_split_list_push(Arena *arena, String8List *list, U8 *split_chars, U64 split_chars_count, 
                     String8 string, StringSplitFlags flags)
 {
   U8 *ptr = string.str;  
@@ -774,8 +877,8 @@ internal String8
 cstyle_hex_from_u64(Arena *arena, U64 x, B32 caps)
 {
  local_persist char int_value_to_char[] = "0123456789abcdef";
- U8 buffer[10];
- U8 *opl = buffer + 10;
+ U8 buffer[18];
+ U8 *opl = buffer + 18;
  U8 *ptr = opl;
  if(x == 0)
  {
@@ -807,9 +910,80 @@ cstyle_hex_from_u64(Arena *arena, U64 x, B32 caps)
  *ptr = '0';
  
  String8 result = {0};
- result.size = (U64)(ptr - buffer);
+ result.size = (U64)(opl - ptr);
  result.str = push_array_no_zero(arena, U8, result.size);
  MemoryCopy(result.str, buffer, result.size);
  
  return result;
+}
+
+internal S64
+sign_from_str8(String8 string, String8 *string_tail){
+  // count negative signs
+  U64 neg_count = 0;
+  U64 i = 0;
+  for (; i < string.size; i += 1){
+    if (string.str[i] == '-'){
+      neg_count += 1;
+    }
+    else if (string.str[i] != '+'){
+      break;
+    }
+  }
+  
+  // output part of string after signs
+  *string_tail = str8_skip(string, i);
+  
+  // output integer sign
+  S64 sign = (neg_count & 1)?-1:+1;
+  return(sign);
+}
+
+internal S64
+s64_from_str8(String8 string, U32 radix){
+  S64 sign = sign_from_str8(string, &string);
+  S64 x = (S64)u64_from_str8(string, radix) * sign;
+  return(x);
+}
+
+internal F64
+f64_from_str8(String8 string)
+{
+  // TODO(rjf): crappy implementation for now that just uses atof.
+  F64 result = 0;
+  if(string.size > 0)
+  {
+    // rjf: find starting pos of numeric string, as well as sign
+    F64 sign = +1.0;
+    //U64 first_numeric = 0;
+    if(string.str[0] == '-')
+    {
+      //first_numeric = 1;
+      sign = -1.0;
+    }
+    else if(string.str[0] == '+')
+    {
+      //first_numeric = 1;
+      sign = 1.0;
+    }
+    
+    // rjf: gather numerics
+    U64 num_valid_chars = 0;
+    char buffer[64];
+    for(U64 idx = 0; idx < string.size && num_valid_chars < sizeof(buffer)-1; idx += 1)
+    {
+      if(char_is_digit(string.str[idx], 10) || string.str[idx] == '.')
+      {
+        buffer[num_valid_chars] = string.str[idx];
+        num_valid_chars += 1;
+      }
+    }
+    
+    // rjf: null-terminate (the reason for all of this!!!!!!)
+    buffer[num_valid_chars] = 0;
+    
+    // rjf: do final conversion
+    result = sign * atof(buffer);
+  }
+  return result;
 }
