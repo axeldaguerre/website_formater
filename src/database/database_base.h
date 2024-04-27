@@ -1,7 +1,7 @@
 #ifndef DATABASE_BASE_H
 # define DATABASE_BASE_H
 // TODO: It's quite wrong, macro shouldn't exists
-#define COL_TEXT(name, type) { 0, {(U8 *)name, sizeof(name) - 1}, type }
+#define COL_TEXT(name, type) { 0, 0, {(U8 *)name, sizeof(name) - 1}, type }
 
 typedef U32 DBError;
 enum
@@ -35,6 +35,7 @@ struct ColumnData
 typedef struct EntryDataDB EntryDataDB;
 struct EntryDataDB 
 {
+  EntryDataDB *next_sibbling;
   ColumnData data;
 };
 

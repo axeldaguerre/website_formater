@@ -7,10 +7,12 @@
 #define SLLPush(f,l,n) (f == 0) ?\
   (f)=(l)=(n):\
   ((l)->next=(n), (l)=(n), SetNil(0,(n)->next))
+  
 // Base Singly-Linked-List Queue Macros
 #define SLLQueuePush_NZ(nil,f,l,n,next) (CheckNil(nil,f)?\
 ((f)=(l)=(n),SetNil(nil,(n)->next)):\
 ((l)->next=(n),(l)=(n),SetNil(nil,(n)->next)))
+
 #define SLLQueuePop_NZ(nil,f,l,next) ((f)==(l)?\
 (SetNil(nil,f),SetNil(nil,l)):\
 ((f)=(f)->next))
@@ -18,6 +20,7 @@
 #define SLLQueuePushFront_NZ(nil,f,l,n,next) (CheckNil(nil,f)?\
 ((f)=(l)=(n),SetNil(nil,(n)->next)):\
 ((n)->next=(f),(f)=(n)))
+
 #define SLLQueuePush(f,l,n) SLLQueuePush_NZ(0,f,l,n,next)
 
 #define SLLStackPush_N(f,n,field) ((n)->field=(f), (f)=(n))

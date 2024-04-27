@@ -8,14 +8,16 @@
 #include "base/base_inc.h"
 #include "os/os_inc.h"
 #include "html/html_inc.h"
-// #include "database/database_inc.h"
 #include "third_party/stb/stb_sprintf.h"
 
 #include "os/os_inc.c"
 #include "base/base_inc.c"
 #include "html/html_inc.c"
-// #include "database/database_inc.c"
 
+/*
+    TODOS:
+    1- URGENT: parser will not end at the end of the file
+*/
 
 #if OS_WINDOWS
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)

@@ -28,7 +28,8 @@ database_close(StateDB *state)
 }
 
 internal void
-database_exec_push_list(Arena *arena, String8 query, StateDB *state, TextualTable *table, EntryDataDBList *out)
+database_exec_push_list(Arena *arena, String8 query, StateDB *state, 
+                        TextualTable *table, EntryDataDBList *out)
 {
   if(state->db_type == TypeDB_SQLITE)
   {
@@ -86,38 +87,6 @@ database_exec_push_list(Arena *arena, String8 query, StateDB *state, TextualTabl
 }
 
 internal void
-database_textual_from_entry_list_push(Arena *arena, EntryDataDBList *entry_list,
-                                      TextualList *out)
-{
-  for(EntryDataDBNode *node = entry_list->first; 
-      node != 0; 
-      node = node->next)
-  {
-    Textual  *first_textual = {0};
-    Textual  *last_textual  = {0};
-    for(ColumnData *data = &node->entry.data; 
-        data != 0; 
-        data = data->next_sibbling)
-    {
-      Textual *textual = push_array(arena, Textual, 1);
-      textual->type = node->entry.data.textual_type;
-      textual->text = node->entry.data.value;
-      // TODO: MACRO or procedure (search to see others)
-      if(last_textual)
-      {
-        last_textual->next_sibbling = textual;
-      }
-      else
-      {
-        first_textual = textual;
-      }
-      last_textual = textual;
-    }
-    textual_list_push(arena, out, first_textual);
-  }
-}
-
-internal void
 database_print_error(StateDB *state)
 {
   if(!state->errors & DBError_Null)
@@ -161,34 +130,111 @@ database_append_node(Arena *arena, TextualList *list, TextualNode *in)
   }
 }
 
-internal void
-database_to_textual(Arena *arena, EntryDataDBList *list, Textual *table, 
-                    TextualList *out)
+
+internal EntryDataDBNode *
+database_try_retrieve_entry_node(EntryDataDBList *list, ColumnData data)
 {
-  for(EntryDataDBNode *node = list->first; node != 0; node = node->next)
+  EntryDataDBNode *result = {0};
+  for(EntryDataDBNode *node = list->first; 
+      node != 0; 
+      node = node->next)
+  { 
+    for(ColumnData *col = &node->entry.data;
+        col != 0; 
+        col = col->next_sibbling)
+    {
+      if(str8_match(col->name, data.name, StringMatchFlag_CaseInsensitive) &&
+        str8_match(col->value, data.value, StringMatchFlag_CaseInsensitive))
+      {
+        result = node;        
+        break;
+      }
+    }
+    if(result)
+    {
+      break;
+    }
+  }
+  return result;
+}
+  
+internal EntryDataDBList *
+database_entries_group_by(Arena *arena, EntryDataDBList *list, ColumnData by)
+{
+  EntryDataDBList *result = push_array(arena, EntryDataDBList, 1);
+  
+  for(EntryDataDBNode *node = list->first; 
+      node != 0; 
+      node = node->next)
   {
-    Textual *first_textual = {0};
-    Textual *last_textual = {0};
-    
-    for(ColumnData *data = &node->entry.data; 
+    for(ColumnData *data = &node->entry.data;
         data != 0; 
         data = data->next_sibbling)
     {
+      if(str8_match(data->name, by.name, StringMatchFlag_CaseInsensitive))
+      {
+        EntryDataDBNode *existing_node = database_try_retrieve_entry_node(result, *data);
+        if(existing_node)
+        {
+          for(EntryDataDB *entry = &existing_node->entry; 
+              entry !=0; 
+              entry = entry->next_sibbling)
+          {
+            if(!entry->next_sibbling)
+            {
+              entry->next_sibbling = &node->entry;
+              break;
+            }
+          }
+        }
+        else if(!existing_node && str8_match(by.name, data->name, StringMatchFlag_CaseInsensitive))
+        {
+          database_entry_list_push(arena, result, &node->entry);
+        }
+      }
+    }
+  }
+  return result;
+}
+internal Textual *
+database_entries_to_textual(Arena *arena, EntryDataDB *entries)
+{
+  Textual *result = push_array(arena, Textual, 1);  
+  /*
+    TODO: pointer is not null when there is no data left, we seems to set it somewhere in the 
+          code even when the entry is null
+  */
+  if(entries->data.type != ColumnType_Null)
+  { 
+    Textual *first = {0};  
+    Textual *last = {0};
+    
+    for(ColumnData *data = &entries->data; 
+        data != 0; 
+        data = data->next_sibbling)
+    {      
       Textual *textual = push_array(arena, Textual, 1);  
       textual->text = push_str8_copy(arena, data->value);
       textual->type = data->textual_type;
       
-      if(last_textual)
+      // TODO: MACRO or procedure (search to see others)      
+      if(last)
       {
-        last_textual->next_sibbling = textual;
+        last->first_sub_textual = textual;
       }
       else
       {
-       first_textual = textual; 
+        first = textual; 
       }
-      last_textual = textual;
+      last = textual;
     }
     
-    textual_list_push(arena, out, first_textual);
-  }
+    if(entries->next_sibbling)
+    {
+      first->next_sibbling = database_entries_to_textual(arena, entries->next_sibbling);
+    }
+    result = first;
+  }  
+  
+  return result;
 }

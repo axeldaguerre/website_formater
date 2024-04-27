@@ -48,7 +48,6 @@ arena_push(Arena *arena, U64 size)
   Arena *current = arena->current;
   AssertAlways(current != 0);
   U64 pos_new = current->pos + size;
-  
   if(pos_new > arena->res)
   {
     /*
@@ -66,13 +65,13 @@ arena_push(Arena *arena, U64 size)
   }
   
   if(current->cmt < pos_new) 
-  {
+  { 
     U64 cmt_new_size = pos_new - current->cmt;
     U64 cmt_new_size_clamped = ClampTop(current->res, cmt_new_size);
     B32 is_cmt_ok = os_commit((U8*)current + current->cmt, cmt_new_size_clamped);
     if(is_cmt_ok)
     {
-        current->cmt = cmt_new_size_clamped;
+        current->cmt += cmt_new_size_clamped;
     }
     //DWORD Error = GetLastError();
     AssertAlways(is_cmt_ok);
@@ -86,9 +85,11 @@ arena_push(Arena *arena, U64 size)
     current->pos = pos_new;
   }
   
+  AssertAlways(memory != 0);
+  
   if(memory == 0)
   { 
-    os_graphical_message(arena, 1, str8_lit("Fatal Allocation Failure"), str8_lit("Unexpected memory allocation failure."));
+    // os_graphical_message(arena, 1, str8_lit("Fatal Allocation Failure"), str8_lit("Unexpected memory allocation failure."));
     //os_exit_process(1);
   }
   return memory;

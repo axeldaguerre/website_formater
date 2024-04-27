@@ -1,6 +1,9 @@
 /*
-   The table is designed to allow you to include it multiple times to "pull out" other things
-   from the table, such as html tagname as strings or enums, if a tag has a closing tag etc.
+   NOTE: - The table is designed to allow you to include it multiple times to "pull out" other things
+          from the table, such as html tagname as strings or enums, if a tag has a closing tag etc.
+         - The order is used for priority, id est if we want a tag being a title, we will get the closer 
+            from the top and ignore the ones below.
+   
 */
 #ifndef STRLEN
   #define STRLEN(X) (U64)(sizeof(X) - 1)
@@ -77,50 +80,50 @@
 #define BODY       { (U8*)"body",      sizeof("body")-1 }
 #define FOOTER     { (U8*)"footer",    sizeof("footer")-1 }
 #define LABEL      { (U8*)"label",     sizeof("label")-1 }
-#define CREATE_TEXT_ARRAY(...) {__VA_ARGS__}
 
-TAG(a,      Paired,   A, CREATE_TEXT_ARRAY(TextType_Link))
-TAG(p,      Paired,   P, CREATE_TEXT_ARRAY(TextType_Paragraph))
-TAG(li,     Paired,   LI, CREATE_TEXT_ARRAY(TextType_Item_List))
-TAG(ul,     Paired,   UL, CREATE_TEXT_ARRAY(TextType_Parent_List))
-TAG(ol,     Paired,   OL, CREATE_TEXT_ARRAY(TextType_Item_List))
-TAG(h1,     Paired,   H1, CREATE_TEXT_ARRAY(TextType_Title))
-TAG(h2,     Paired,   H2, CREATE_TEXT_ARRAY(TextType_Heading1))
-TAG(h3,     Paired,   H3, CREATE_TEXT_ARRAY(TextType_Heading2))
-TAG(h4,     Paired,   H4, CREATE_TEXT_ARRAY(TextType_Heading3))
-TAG(div,    Paired,   DIV, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(img,    Unique,   IMG, CREATE_TEXT_ARRAY(TextType_Visual))
-TAG(br,     Unique,   BR, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(strong, Paired,   STRONG, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(span,   Paired,   SPAN, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(pre,    Paired,   PRE, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(u,      Paired,   U, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(em,     Paired,   EM, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(code,   Paired,   CODE, CREATE_TEXT_ARRAY(TextType_Code,TextType_Date))
-TAG(section,Paired,   SECTION, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(meta,   Unique,   META, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(link,   Unique,   LINK, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(script, Paired,   SCRIPT, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(small,  Paired,   SMALL, CREATE_TEXT_ARRAY(TextType_Esthetic))
-TAG(article,Paired,   ARTICLE, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(nav,    Paired,   NAV, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(header, Paired,   HEADER, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(main,   Paired,   MAIN, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(aside,  Paired,   ASIDE, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(table,  Paired,   TABLE, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(tr,     Paired,   TR, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(th,     Paired,   TH, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(td,     Paired,   TD, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(form,   Paired,   FORM, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(input,  Unique,   INPUT, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(button, Paired,   BUTTON, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(label,  Paired,   LABEL, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(head,   Paired,   HEAD, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(doctype,Unique,   DOCTYPE, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(html,   Paired,   HTML, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(title,  Paired,   TITLE, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(body,   Paired,   BODY, CREATE_TEXT_ARRAY(TextType_Structural))
-TAG(footer, Paired,   FOOTER, CREATE_TEXT_ARRAY(TextType_Structural))
+
+TAG(a,      Paired,   A,       { TextType_Link })
+TAG(p,      Paired,   P,       { TextType_Paragraph })
+TAG(li,     Paired,   LI,      { TextType_Item_List })
+TAG(ul,     Paired,   UL,      { TextType_Parent_List })
+TAG(ol,     Paired,   OL,      { TextType_Item_List })
+TAG(h1,     Paired,   H1,      { TextType_Title })
+TAG(h2,     Paired,   H2,      { TextType_Heading1 })
+TAG(h3,     Paired,   H3,      { TextType_Heading2 })
+TAG(h4,     Paired,   H4,      { TextType_Heading3 })
+TAG(div,    Paired,   DIV,     { TextType_Structural })
+TAG(img,    Unique,   IMG,     { TextType_Visual })
+TAG(br,     Unique,   BR,      { TextType_Esthetic })
+TAG(strong, Paired,   STRONG,  { TextType_Esthetic })
+TAG(span,   Paired,   SPAN,    { TextType_Esthetic })
+TAG(pre,    Paired,   PRE,     { TextType_Esthetic })
+TAG(u,      Paired,   U,       { TextType_Esthetic })
+TAG(em,     Paired,   EM,      { TextType_Esthetic })
+TAG(code,   Paired,   CODE,    { TextType_Code  | TextType_Date})
+TAG(section,Paired,   SECTION, { TextType_Structural })
+TAG(meta,   Unique,   META,    { TextType_Structural })
+TAG(link,   Unique,   LINK,    { TextType_Structural })
+TAG(script, Paired,   SCRIPT,  { TextType_Structural })
+TAG(small,  Paired,   SMALL,   { TextType_Esthetic   })
+TAG(article,Paired,   ARTICLE, { TextType_Structural })
+TAG(nav,    Paired,   NAV,     { TextType_Structural })
+TAG(header, Paired,   HEADER,  { TextType_Structural })
+TAG(main,   Paired,   MAIN,    { TextType_Structural })
+TAG(aside,  Paired,   ASIDE,   { TextType_Structural })
+TAG(table,  Paired,   TABLE,   { TextType_Structural })
+TAG(tr,     Paired,   TR,      { TextType_Structural })
+TAG(th,     Paired,   TH,      { TextType_Structural })
+TAG(td,     Paired,   TD,      { TextType_Structural })
+TAG(form,   Paired,   FORM,    { TextType_Structural })
+TAG(input,  Unique,   INPUT,   { TextType_Structural })
+TAG(button, Paired,   BUTTON,  { TextType_Structural })
+TAG(label,  Paired,   LABEL,   { TextType_Structural })
+TAG(head,   Paired,   HEAD,    { TextType_Structural })
+TAG(doctype,Unique,   DOCTYPE, { TextType_Structural })
+TAG(html,   Paired,   HTML,    { TextType_Unmeaningfull })
+TAG(title,  Paired,   TITLE,   { TextType_Structural })
+TAG(body,   Paired,   BODY,    { TextType_Structural })
+TAG(footer, Paired,   FOOTER,  { TextType_Structural })
 
 #undef A
 #undef P

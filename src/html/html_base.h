@@ -27,83 +27,23 @@ struct HTMLToken
   String8      string;
 };
 
-typedef U32 HTMLTagType;
-enum
-{
-  HTMLTag_None,
-
-#define TAG(Tag, ...) HTMLTag_##Tag,
-#include "html_tag_table.inl"
-  
-  HTMLTag_Count,
-};
-
-typedef U32 HTMLEnclosingType;
-enum
+typedef struct HTMLTag HTMLTag;
+struct HTMLTag
 {  
-  HTMLEnclosingType_Null,
-  HTMLEnclosingType_opening,
-  HTMLEnclosingType_closing, 
-};
-
-typedef U32 HTMLTagEnclosingType;
-enum
-{  
-  HTMLTagEnclosingType_Paired,
-  HTMLTagEnclosingType_Unique,
-  HTMLTagEnclosingType_Self, 
-};
-
-typedef struct HTMLTagEncoding HTMLTagEncoding;
-struct HTMLTagEncoding
-{
   HTMLTagType          type;
   HTMLTagEnclosingType enclosing_type;
   String8              tag_name;
-  TextType             text_types[5]; // TODO: no constant size
-};
-
-internal HTMLTagEncoding html_encoding_table[] =
-{
- #include "html_tag_table.inl"
-};
-
-internal HTMLTagEncoding
-html_get_encoding_from_meaning(TextType type)
-{
-  HTMLTagEncoding result = {0};
-  for(U32 idx = 0; idx < ArrayCount(html_encoding_table); ++idx)
-  {
-    HTMLTagEncoding encoding = html_encoding_table[idx];
-    for(U8 text_type_idx = 0; 
-      text_type_idx < ArrayCount(encoding.text_types); 
-      ++text_type_idx)
-      {
-        if(encoding.text_types[text_type_idx] == type)
-        {
-          result = encoding;
-          break;
-        }
-      }
-    
-  }
-  return result;
-}
-
-typedef struct HTMLTag HTMLTag;
-struct HTMLTag
-{
-  HTMLTagEncoding   encoding;
-  HTMLEnclosingType enclosing_type;
-  Rng1U64           range[2];
+  TextType             text_types;
+  Rng1U64              range[2];
 };
 
 typedef struct HTMLElement HTMLElement;
 struct HTMLElement
 {
+  HTMLElement *first_sub_element;
   HTMLElement *next_sibbling;
   HTMLTag      tag;
-  String8      data;
+  String8      content;
 };
 
 typedef struct HTMLElementNode HTMLElementNode;
@@ -118,7 +58,14 @@ struct HTMLElementList
 {
   HTMLElementNode *first;
   HTMLElementNode *last;
-  U64           count;
+  U64              node_count;
+};
+
+typedef struct HTMLElementArray HTMLElementArray;
+struct HTMLElementArray
+{
+  HTMLElement *v;
+  U64 count;
 };
 
 typedef U32 HTMLErrorType;
@@ -143,6 +90,8 @@ struct HTMLParser
 {
   String8   string;
   HTMLError error;
+  U8        level_deep;
+  U8        space_by_indent;
   U64       at;
 };
 
