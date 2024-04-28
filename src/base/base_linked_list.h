@@ -1,6 +1,10 @@
 #ifndef BASE_LINKED_LIST_H
 #define BASE_LINKED_LIST_H
 
+#define Append(first,last,next,value) (CheckNil(0,last))?\
+ (next)=(value),(last)=(value):\
+ ((first)=(value),(last)=(value))
+
 #define CheckNil(nil,p) ((p) == 0 || (p) == nil)
 #define SetNil(nil, p) ((p)=nil)
 

@@ -436,15 +436,7 @@ html_element_from_textual(Arena *arena, Textual *textual)
           sub_textual = sub_textual->first_sub_textual)
       {        
         HTMLElement *el = html_create_element_from_textual(arena, *sub_textual);
-        if(last_sub)
-        {
-          last_sub->next_sibbling = el; 
-        }
-        else
-        {
-          first_sub = el;
-        }
-        last_sub = el;
+        Append(first_sub, last_sub, last_sub->next_sibbling, el);
       }
       
       root->next_sibbling = first_sub;
