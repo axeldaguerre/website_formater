@@ -14,11 +14,6 @@
 #include "base/base_inc.c"
 #include "html/html_inc.c"
 
-/*
-    TODOS:
-    1- URGENT: parser will not end at the end of the file
-*/
-
 #if OS_WINDOWS
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {

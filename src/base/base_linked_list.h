@@ -1,12 +1,13 @@
 #ifndef BASE_LINKED_LIST_H
 #define BASE_LINKED_LIST_H
 
-#define Append(first,last,next,value) (CheckNil(0,last))?\
- (next)=(value),(last)=(value):\
- ((first)=(value),(last)=(value))
 
 #define CheckNil(nil,p) ((p) == 0 || (p) == nil)
 #define SetNil(nil, p) ((p)=nil)
+
+#define AppendLast(first,last,next,value) (CheckNil(0, last))?\
+((first)=(value),(last)=(value)):\
+((next)=(value),(last)=(value))
 
 #define SLLPush(f,l,n) (f == 0) ?\
   (f)=(l)=(n):\
@@ -31,6 +32,5 @@
 #define SLLStackPop_N(f,field) ((f)=(f)->field)
 #define SLLQueuePushFront(f,l,n) SLLQueuePushFront_NZ(0,f,l,n,next)
 
-#define SLLConvert(f,n,field) ((n)->field=(f), (f)=(n))
 
 #endif

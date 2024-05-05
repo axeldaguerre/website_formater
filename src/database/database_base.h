@@ -3,13 +3,13 @@
 // TODO: It's quite wrong, macro shouldn't exists
 #define COL_TEXT(name, type) { 0, 0, {(U8 *)name, sizeof(name) - 1}, type }
 
-typedef U32 DBError;
-enum
+typedef U8 DBError;
+enum 
 {
-  DBError_Null          = (0 << 0),
-  DBError_Query         = (1 << 0),
-  DBError_Connexion     = (1 << 1),
-  DBError_Library       = (1 << 2),
+  DBError_Null          = 0,
+  DBError_Query         = (1 << 1),
+  DBError_Connexion     = (1 << 2),
+  DBError_Library       = (1 << 3),
 };
 
 typedef U32 ColumnType;
@@ -67,7 +67,7 @@ struct StateDB
   
   OS_Handle lib;
   B32       is_initialized;
-  DBError  errors;
+  DBError   errors;
   TypeDB    db_type;
   U8        memory[200];
 };
