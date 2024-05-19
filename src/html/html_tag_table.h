@@ -5,9 +5,12 @@
     *Element* is specified as the full piece of informations of a specific content
     *Tag* is the data marking the start and end of an element
 */
-
-
-enum HTMLTagEnclosingType: U32
+/*
+  TODO: add a void element specification ? 
+        void element means they do can't have children, it means self closing and single tag element can't have children and seems to be very similar in the way they are parsed
+*/ 
+typedef U8 HTMLTagEnclosingType;
+enum 
 { 
   HTMLTagEnclosingType_Null   = 0, 
   
@@ -16,18 +19,49 @@ enum HTMLTagEnclosingType: U32
   HTMLTagEnclosingType_Self   = (1 << 3),
 };
 
+typedef U8 HTMLTagContentType;
+enum
+{
+    HTMLTagContentType_Null,
+    HTMLTagContentType_Phrasing,
+    HTMLTagContentType_Flow,  
+    HTMLTagContentType_Heading, 
+    HTMLTagContentType_Sectioning,  
+    HTMLTagContentType_Embedded,   
+    HTMLTagContentType_Interactive,   
+    HTMLTagContentType_Metadata,   
+    HTMLTagContentType_Document,   
+    HTMLTagContentType_Scripting,   
+};
+
+typedef U8 HTMLTagFlowContentType;
+enum
+{
+    HTMLTagFlowContentType_Null,
+    HTMLTagFlowContentType_Block,
+    HTMLTagFlowContentType_Inline,
+} ;
+
+
 typedef struct HTMLTagInvariant HTMLTagInvariant;
 struct HTMLTagInvariant
 {
-  // TODO: is it ok to not having an enum ?
-  U64          type;
-  HTMLTagEnclosingType enclosing_type;
-  String8              tag_name;
-  TextType             text_types;
+  U64                      tag;
+  HTMLTagContentType       content_type;
+  HTMLTagFlowContentType   flow_type;
+  HTMLTagEnclosingType     enclosing_type;
+  String8                  tag_name;
+  RawMeaning               meaning;
 };
 
-typedef struct HTMLTagTable HTMLTagTable;
-struct HTMLTagTable
+internal HTMLTagInvariant 
+html_tag_table[] =
+{
+ #include "html_tag_table.inl"
+};
+
+typedef struct HTMLTagInvariantTable HTMLTagInvariantTable;
+struct HTMLTagInvariantTable
 {
   HTMLTagInvariant *tags;
   U8                tag_count;
