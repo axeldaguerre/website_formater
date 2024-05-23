@@ -42,7 +42,7 @@ struct OS_HandleArray
 typedef U32 OS_FileIterFlags;
 enum 
 {
-  OS_FileIterFlag_None           = (1 << 0),
+  OS_FileIterFlag_None           = 0,
   OS_FileIterFlag_SkipFolders    = (1 << 1),
   OS_FileIterFlag_SkipSubFolders = (1 << 2),
   OS_FileIterFlag_SkipFiles      = (1 << 3),

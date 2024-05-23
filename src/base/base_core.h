@@ -29,3 +29,11 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 # define AsanPoisonMemoryRegion(addr, size)   ((void)(addr), (void)(size))
 # define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
 #endif
+
+#if OS_WINDOWS
+# include <windows.h>
+# include <tmmintrin.h>
+# include <wmmintrin.h>
+# include <intrin.h>
+# include <wingdi.h>
+#endif

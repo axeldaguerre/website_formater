@@ -385,20 +385,23 @@ html_parse_attributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node
   U8 *start_str = parser->string.str + el_node->element.tags[0]->first_token.range.max + el_node->element.tags[0]->tag_name.size;
   U8 *end_str = parser->string.str + el_node->element.tags[0]->last_token.range.min;
   String8 string = str8_range(start_str, end_str);
-  // TODO: HTMLToken is hacked here, because it's not represented as a token but as dummy start/end or whitespace start/end 
-  HTMLToken token = {0};
-  String8 value = {0};
+  
+  HTMLToken token = {0};  
   HTMLElementAttribute attribute = {0};
   U64 at = 0;
   RawTokenType quotes = RawTokenType_simple_quote|RawTokenType_double_quote;
-  
   while(at <= string.size)
   {
     /*
       NOTE: while parsing spec like html attributes, it result in nicer code when you delay the parsing the maximum. 
             Because that's always the next parsing that will tell you what was the previous one. 
+            The parsing is forgiving because it's simple, we need more checks because html parser does not behave like this one.
+            Like if the last pair/value is not a double quote, the attribute will still be parsed normally, 
+            as the parser will know it's the end of the attribute's value when it enconter a non-dummy token. 
+            In order to make it yell at us when it does, assert are here but TODO: we will need to write error msgs instead.
     */   
-    token = html_get_token_type(string, at++);   
+   
+    token = html_get_token_type(string, at++);
     
     if(token.type == RawTokenType_dummy)
     {
@@ -427,16 +430,18 @@ html_parse_attributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node
         {
           token = html_get_token_type(string, at++);
         }        
+        // TODO: Check if we have the same type of quotes beginning/end
         AssertAlways(token.type == RawTokenType_simple_quote || token.type == RawTokenType_double_quote);
                      
         token = html_get_token_type(string, at++);
         AssertAlways(token.type == RawTokenType_dummy);
         
-        start = token;        
+        start = token;
         while(at <= string.size && !(token.type & quotes))
         {
           token = html_get_token_type(string, at++);
-        }                
+        }
+        AssertAlways(token.type & quotes);
         attribute.value = str8(string.str + start.range.min, token.range.min-start.range.min);
         token = html_get_token_type(string, at++);        
       }

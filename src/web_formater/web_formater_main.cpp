@@ -34,7 +34,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   {
     String8 target_path = str8((U8*)argv[1], cstr8_length((U8*)argv[1]));
     OS_FileInfoList *info_list = push_array(perm_arena, OS_FileInfoList, 1);
-    // use OS_FileIterFlag flags
+    // TODO: replace by the OS_FileInfoListFromPath() root basis  
     os_push_files_infos(perm_arena, target_path, OS_FileIterFlag_SkipHiddenFiles, info_list);
     
     String8 full_errors = html_parse(perm_arena, info_list);

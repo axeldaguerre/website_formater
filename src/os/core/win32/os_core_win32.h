@@ -1,4 +1,11 @@
 #include <Windows.h>
+#pragma comment(lib, "user32")
+#pragma comment(lib, "winmm")
+#pragma comment(lib, "shell32")
+#pragma comment(lib, "advapi32")
+#pragma comment(lib, "rpcrt4")
+#pragma comment(lib, "shlwapi")
+#pragma comment(lib, "comctl32")
 
 typedef struct W32_FileIter W32_FileIter; 
 struct W32_FileIter
