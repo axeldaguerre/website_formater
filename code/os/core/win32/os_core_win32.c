@@ -484,6 +484,10 @@ OS_FileOpen(OS_AccessFlags access_flags, String8 path)
  {
   creation_disposition = OPEN_EXISTING;
  }
+ else
+ {
+  creation_disposition = CREATE_ALWAYS;
+ }
  
  // rjf: misc.
  DWORD flags_and_attributes = 0;

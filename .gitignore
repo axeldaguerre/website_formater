@@ -7,11 +7,12 @@
 *.map
 *.pdb
 *.txt
+*.mdesk
 public_1
 public_2
-
-src/engine.code-workspace
+build/*.ilk
 build/pt
 build/vc140.pdb
 copy_vault.bat
 build_dev.bat
+code/engine.code-workspace

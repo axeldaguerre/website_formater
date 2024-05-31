@@ -5,7 +5,6 @@
         - Make the lexer a bit more dumb ? Not sure but trying to know if drawing a thinner representation is better          
 */
 
-#define
 typedef U32 RawTokenType;
 enum
 {
@@ -22,6 +21,7 @@ enum
   RawTokenType_dummy                          = (1 << 9),  
   RawTokenType_comment_open                   = (1 << 10),
   RawTokenType_comment_close                  = (1 << 11),
+  RawTokenType_escaped_symbol                 = (1 << 12),
 };
 
 typedef struct HTMLToken HTMLToken;

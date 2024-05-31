@@ -19,10 +19,15 @@
 /*
   TODOS:
      - @Computation: Tokenizer on comment don't trigger which 
-     - @Error on  no space attributes, this parser doesn't care but others do.
-     - @Error on comment is not ok, it seems to not catch a bad constructed comment 
+     - @UX on  no space attributes, this parser doesn't care but others do.
+     - @Bug on comment is not ok, it seems to not catch a bad constructed comment 
+     - @Bug: I think files are parsed two times
+     - @Bug: if a file as several error msg, the string is cut (filePath) *OR* it's because I have duplicated files
+     - @Bug: pre tags are not skipped for parsing
+     - @Improvement: I think stopping parsing asap we encounter error is better for complexity *BUT* I won't be able to integrate it on a code editor (only one error, slower and cluncky ux corrector)
+     - @UX: Check for anchor tag's content being empty (not displayed in browser)
      
-*/
+*/   
 internal void
 EntryPoint(CmdLine *cmdln)
 {
@@ -30,6 +35,10 @@ EntryPoint(CmdLine *cmdln)
   WCHAR *command_line = GetCommandLineW();
   String8 website_path = Str8Lit("C:/Users/axeld/Documents/Projects/Projects_Repositories/axeldaguerre/public/");
   
+  String8 log_path =  Str8Lit("C:/Users/axeld/Documents/Projects/Projects_Repositories/axeldaguerre/log_errors.txt");
+  OS_Handle file = OS_FileOpen(OS_AccessFlag_Write|OS_AccessFlag_CreateNew, log_path);
+  // OS_FileWrite(file, 0, Str8Lit("NO error found"));
+    
   String8List *path_list = PushArray(perm_arena, String8List, 1);
   typedef struct Task Task;
   struct Task
@@ -59,7 +68,8 @@ EntryPoint(CmdLine *cmdln)
       }
     }
   }
-  String8List *err_msg_list = PushArray(perm_arena, String8List, 1);
+  
+  String8List *err_msg_list = PushArray(perm_arena, String8List, 1);  
   for(String8Node *n = path_list->first; n != 0; n = n->next)
   {
     if(!Str8Match(Str8SkipLastDot(n->string), Str8Lit("html"), MatchFlag_CaseInsensitive))
@@ -74,10 +84,13 @@ EntryPoint(CmdLine *cmdln)
     if(errors.size)
     {
       String8 prefix = PushStr8F(perm_arena, "%S%S", Str8Lit("File path:"), n->string);
-      Str8ListPush(perm_arena, err_msg_list, prefix);
+      Str8ListPush(perm_arena, err_msg_list, Str8Lit("File path:"));
+      Str8ListPush(perm_arena, err_msg_list, Str8Lit("\n"));
+      Str8ListPush(perm_arena, err_msg_list, n->string);
+      Str8ListPush(perm_arena, err_msg_list, Str8Lit("\n"));
       Str8ListPush(perm_arena, err_msg_list, errors);
     }    
-  }
-  OS_WriteDataToFilePath(Str8Lit("C:\\Users\\axeld\\Documents\\Projects\\Projects_Repositories\\axeldaguerre\\log_errors.txt"), *err_msg_list);
-  
+  }  
+  OS_FileWrite(file, 0, *err_msg_list);
+  OS_FileClose(file);
 }

@@ -1,9 +1,3 @@
-// internal B32
-// HTML_IsNil(HTMLElementNode *node)
-// {
-//   return node == 0 || node == &html_el_n_g_nil;
-// }
-
 internal HTMLElementAttributeNode *
 HTML_AttributePush(Arena *arena, HTMLElementAttribute attribute, 
                     HTMLElementAttributeList *list)
@@ -219,6 +213,27 @@ HTML_GetTokenType(String8 string, U64 at)
     { 
       result.type = RawTokenType_equal;
     } break;
+    case '&':
+    { 
+      // NOTE: lot of url's will trigger this. Youtube videos are plenty
+      U64 at_end = result.range.min;
+      while((at_end-result.range.min <= 4) && string.str[at_end] != ';')
+      {
+        ++at_end;
+      }
+      String8 escaped = Substr8(string, R1U64(result.range.min, at_end+1));
+      if(Str8Match(Str8Lit("&amp;"), escaped, MatchFlag_CaseInsensitive) || // '&'
+        Str8Match(Str8Lit("&lt;"), escaped, MatchFlag_CaseInsensitive)   || // '<'
+        Str8Match(Str8Lit("&gt;"), escaped, MatchFlag_CaseInsensitive))     // '>'
+      {
+        result.type = RawTokenType_escaped_symbol;  
+        result.range.max = result.range.min+escaped.size-1;
+      }
+      else 
+      {
+        result.type = RawTokenType_dummy;
+      }
+    } break;
     default:
     {
       if(string.str[at] == '-' && string.str[at+1] == '-' && string.str[at+2] == '>')
@@ -288,7 +303,9 @@ HTML_NextToken(HTMLParser *parser)
   
   while(HTML_IsParsing(parser) && !(result.type & match))
   {
+    // TODO: the fact that HTML_IsParsing is not checking the actual at is problematic, found a bug when a pre was not closed in C:/Users/axeld/Documents/Projects/Projects_Repositories/axeldaguerre/public/Learn/Learn_Programming/Learn_Programming_Posts/Learn_Programming_IDK_1.html
     result = HTML_GetTokenType(parser->string, at);
+    Assert(result.range.max > result.range.min);
     at += result.range.max-result.range.min;
   }
   
@@ -383,8 +400,8 @@ HTML_ParseAttributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node)
     
     if(token.type == RawTokenType_comment_open)
     {
-      // TODO: really check the value "no-parsing-attributes"
-      /* TODO: As we make error message along the way, we have to put the skip at the beginning in order to avoid meaningless error msg,
+      // TODO: really check the value "no-parsing-attributes", currently when we see comment symbol we skip. It's enough for now
+      /* TODO: As we make error message along the way, we have to put the skip "no-parsing-attributes" at the beginning in order to avoid meaningless error msg,
               which is another clue that the error message must be made at the end or in parallel if possible
         */
       
@@ -393,15 +410,13 @@ HTML_ParseAttributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node)
     else if(token.type == RawTokenType_dummy)
     {
       HTMLToken start = token;
-      while(at <= string.size && 
-            token.type == RawTokenType_dummy)
+      while(at <= string.size && token.type == RawTokenType_dummy)
       {
         token = HTML_GetTokenType(string, at++);
       }
       attribute.value = Str8(string.str + start.range.min, token.range.min-start.range.min);
       
-      while(at <= string.size && 
-            token.type == RawTokenType_whitespace)
+      while(at <= string.size && token.type == RawTokenType_whitespace)
       {
         token = HTML_GetTokenType(string, at++);
       }
@@ -412,8 +427,7 @@ HTML_ParseAttributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node)
         attribute.value = Str8Lit("");
         
         token = HTML_GetTokenType(string, at++);
-        while(at <= string.size && 
-              token.type == RawTokenType_whitespace)
+        while(at <= string.size && token.type == RawTokenType_whitespace)
         {
           token = HTML_GetTokenType(string, at++);
         }
@@ -425,7 +439,7 @@ HTML_ParseAttributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node)
               HTMLErrorType_unexpected_token, 
               Str8Lit("tag's attribute value must be enclosed in quotes"));
         }
-                     
+        
         token = HTML_GetTokenType(string, at++);
         if(token.type != RawTokenType_dummy)
         {          
@@ -439,7 +453,8 @@ HTML_ParseAttributes(Arena *arena, HTMLParser *parser, HTMLElementNode *el_node)
         }
         
         start = token;
-        while(at <= string.size && !(token.type & quotes))
+        
+        while(at <= string.size && !(token.type & first_quote.type))
         {
           token = HTML_GetTokenType(string, at++);
         }
@@ -507,7 +522,7 @@ HTML_ParseElement(Arena *arena, HTMLParser *parser,
         else
         {
           HTML_ParserSetError(arena, parser, 
-                              next_tag->first_token.range.min,
+                              first_tag->first_token.range.min,
                               HTMLErrorType_unexpected_token, 
                               Str8Lit("From opening tag, finding a closing tag from different type is not allowed"));
         }
