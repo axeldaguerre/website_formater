@@ -33,8 +33,6 @@ internal void
 EntryPoint(CmdLine *cmdln)
 {
   Arena *perm_arena = ArenaAllocDefault();
-  
-  String8 website_path = Str8Lit("");
   String8 log_path = CmdLineOptString(cmdln, Str8Lit("log_path"));
   String8 target_path = CmdLineOptString(cmdln, Str8Lit("target_path"));
   
@@ -57,7 +55,7 @@ EntryPoint(CmdLine *cmdln)
   {
     if(target_path.str[target_path.size] != '/' || target_path.str[target_path.size] != '\\')
     {
-      target_path = PushStr8F(perm_arena, "%S/", target_path);
+      target_path = PushStr8F(perm_arena, "%S\\", target_path);
     }
     OS_Handle file = OS_FileOpen(OS_AccessFlag_Write|OS_AccessFlag_CreateNew, log_path);
     
@@ -68,7 +66,7 @@ EntryPoint(CmdLine *cmdln)
       Task *next;
       String8 dir;
     };
-    Task start_task = {0, website_path};
+    Task start_task = {0, target_path};
     Task *first_task = &start_task;
     Task *last_task = &start_task;
     for(Task *task = first_task; task != 0; task = task->next)

@@ -1,6 +1,5 @@
 # How to use 
-`-log_path="log_error_output_path" -target_path="directory_path"`
-
+`html_parser_console_dr.exe -log_path="log_error_output_path.txt" -target_path="directory_path_to_parse"`
 You can call the `.exe` to have printed the options needed to parse HTML files
 
 # website_formater WIP

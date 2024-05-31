@@ -29,8 +29,8 @@ pushd build
 @REM if "%web_formater%"=="1" %compiler% %cl_flags_debug%           ..\code\web_formater\web_formater_main.c  /link /out:web_formater_window_dr.exe
 @REM if "%web_formater%"=="1" %compiler% %cl_flags%                 ..\code\web_formater\web_formater_main.c  /link /out:web_formater_window_rm.exe
 
-if "%web_formater%"=="1" %compiler% %cl_flags_debug% %console% ..\code\web_formater\web_formater_main.c  /link /out:web_formater_console_dr.exe
-if "%web_formater%"=="1" %compiler% %cl_flags%       %console% ..\code\web_formater\web_formater_main.c  /link /out:web_formater_console_mr.exe
+if "%web_formater%"=="1" %compiler% %cl_flags_debug% %console% ..\code\web_formater\web_formater_main.c  /link /out:html_parser_console_dr.exe
+if "%web_formater%"=="1" %compiler% %cl_flags%       %console% ..\code\web_formater\web_formater_main.c  /link /out:html_parser_console_mr.exe
 popd
 
 rem --- Unset Build Flags -----------------------------------------------------
