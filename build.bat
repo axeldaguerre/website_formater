@@ -5,7 +5,7 @@ for %%a in (%*) do set "%%a=1"
 
 rem --- Settings --------------------------------------------------------------
 set compiler=cl
-set cl_flags=/Zi /nologo /FC /I..\code\ /I..\local\
+set cl_flags_debug=/Zi /nologo /FC /I..\code\ /I..\local\
 set gfx=/DOS_FEATURE_GFX=1
 set net=/DOS_FEATURE_NET=1
 set console=/DBUILD_CONSOLE_OUTPUT=1
@@ -26,7 +26,11 @@ rem --- Build & Run Metaprogram -----------------------------------------------
 
 rem --- Build Everything ------------------------------------------------------
 pushd build
-if "%web_formater%"=="1" %compiler% %cl_flags%   ..\code\web_formater\web_formater_main.c  /link /out:web_formater_main.exe
+@REM if "%web_formater%"=="1" %compiler% %cl_flags_debug%           ..\code\web_formater\web_formater_main.c  /link /out:web_formater_window_dr.exe
+@REM if "%web_formater%"=="1" %compiler% %cl_flags%                 ..\code\web_formater\web_formater_main.c  /link /out:web_formater_window_rm.exe
+
+if "%web_formater%"=="1" %compiler% %cl_flags_debug% %console% ..\code\web_formater\web_formater_main.c  /link /out:web_formater_console_dr.exe
+if "%web_formater%"=="1" %compiler% %cl_flags%       %console% ..\code\web_formater\web_formater_main.c  /link /out:web_formater_console_mr.exe
 popd
 
 rem --- Unset Build Flags -----------------------------------------------------
